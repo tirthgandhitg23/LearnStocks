@@ -1,0 +1,61 @@
+import { Stock } from "@/types";
+
+export const mockStocks: Stock[] = [
+  {
+    id: "RELIANCE",
+    symbol: "RELIANCE",
+    name: "Reliance Industries Ltd.",
+    price: 2650,
+    change: 45.5,
+    changePercent: 1.75,
+    volume: 7500000,
+    marketCap: 17900000000,
+    sector: "Energy",
+  },
+  {
+    id: "TCS",
+    symbol: "TCS",
+    name: "Tata Consultancy Services Ltd.",
+    price: 3250,
+    change: 35.25,
+    changePercent: 1.1,
+    volume: 3200000,
+    marketCap: 12000000000,
+    sector: "IT",
+  },
+  {
+    id: "INFY",
+    symbol: "INFY",
+    name: "Infosys Ltd.",
+    price: 1450,
+    change: -12.75,
+    changePercent: -0.87,
+    volume: 5100000,
+    marketCap: 6100000000,
+    sector: "IT",
+  },
+  {
+    id: "HDFCBANK",
+    symbol: "HDFCBANK",
+    name: "HDFC Bank Ltd.",
+    price: 1350,
+    change: 17.25,
+    changePercent: 1.29,
+    volume: 3750000,
+    marketCap: 7500000000,
+    sector: "Banking",
+  },
+  {
+    id: "ICICIBANK",
+    symbol: "ICICIBANK",
+    name: "ICICI Bank Ltd.",
+    price: 920,
+    change: -5.5,
+    changePercent: -0.59,
+    volume: 4200000,
+    marketCap: 6400000000,
+    sector: "Banking",
+  },
+];
+
+export default mockStocks;

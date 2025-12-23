@@ -1,0 +1,33 @@
+project_id = "faflzgtrtjfxanusaltc"
+[functions.get-stock-data]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-stock-data/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/get-stock-data/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/get-stock-data/*.html" ]
+
+[functions.predict-stock]
+enabled = true
+verify_jwt = true
+import_map = "./functions/predict-stock/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/predict-stock/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/predict-stock/*.html" ]
+
+[functions.search-assets]
+enabled = true
+verify_jwt = true
+import_map = "./functions/search-assets/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/search-assets/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/search-assets/*.html" ]
