@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,29 @@ import NavigationBar from "@/components/NavigationBar";
 import { supabase } from "../lib/supabaseClient.ts";
 import { ArrowUp, ArrowDown } from "lucide-react";
 
-const stocks = [
-  "ETERNAL.NS","RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-  "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS", "KOTAKBANK.NS",
-  "LT.NS", "BAJFINANCE.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS",
-  "WIPRO.NS", "ADANIENT.NS", "ULTRACEMCO.NS", "NESTLEIND.NS", "ONGC.NS"
+// Fallback default watchlist when no search query
+const defaultStocks = [
+  "ETERNAL.NS",
+  "RELIANCE.NS",
+  "TCS.NS",
+  "HDFCBANK.NS",
+  "INFY.NS",
+  "ICICIBANK.NS",
+  "HINDUNILVR.NS",
+  "SBIN.NS",
+  "BHARTIARTL.NS",
+  "ITC.NS",
+  "KOTAKBANK.NS",
+  "LT.NS",
+  "BAJFINANCE.NS",
+  "AXISBANK.NS",
+  "ASIANPAINT.NS",
+  "MARUTI.NS",
+  "WIPRO.NS",
+  "ADANIENT.NS",
+  "ULTRACEMCO.NS",
+  "NESTLEIND.NS",
+  "ONGC.NS",
 ];
 
 // Define a type for our stock data
@@ -19,50 +37,146 @@ type StockData = {
   diff: number;
 };
 
+// Minimal type for global search results
+interface SearchAssetResult {
+  symbol: string;
+  shortname?: string;
+  longname?: string;
+  quoteType: "EQUITY" | "ETF" | "MUTUALFUND" | "INDEX" | "CURRENCY" | "FUTURE";
+  exchange: string;
+}
+
 const Predictions = () => {
   const navigate = useNavigate();
   const [stockData, setStockData] = useState<Record<string, StockData>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchAssetResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
-    const fetchAllPrices = async () => {
+    const fetchPricesFor = async (symbols: string[]) => {
+      if (!symbols.length) return;
       setLoading(true);
-      const promises = stocks.map((symbol) =>
-        supabase.functions
-          .invoke("get-stock-data", {
-            body: { symbol },
-          })
-          .then(({ data, error }) => {
-            if (error) {
-              console.error(`Error for ${symbol}:`, error);
-              return null;
-            }
-            return { [symbol]: data.currentPrice };
-          })
-      );
+      try {
+        const promises = symbols.map((symbol) =>
+          supabase.functions
+            .invoke("get-stock-data", {
+              body: { symbol },
+            })
+            .then(({ data, error }) => {
+              if (error) {
+                console.error(`Error for ${symbol}:`, error);
+                return null;
+              }
+              return { [symbol]: data.currentPrice };
+            })
+        );
 
-      const results = await Promise.all(promises);
-      const mergedData = results
-        .filter(Boolean)
-        .reduce((acc, current) => ({ ...acc, ...current }), {});
+        const results = await Promise.all(promises);
+        const mergedData = results
+          .filter(Boolean)
+          .reduce(
+            (acc, current) => ({ ...acc, ...current }),
+            {} as Record<string, StockData>
+          );
 
-      setStockData(mergedData);
-      setLoading(false);
+        setStockData((prev) => ({ ...prev, ...mergedData }));
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchAllPrices();
-    const interval = setInterval(fetchAllPrices, 300000); // Refresh every 5 mins
+    // initial load for default list
+    fetchPricesFor(defaultStocks);
+    const interval = setInterval(() => fetchPricesFor(defaultStocks), 300000); // Refresh every 5 mins
     return () => clearInterval(interval);
   }, []);
+
+  // Global search to enable any NSE stock in Predictions list
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "search-assets",
+          {
+            body: { query: searchQuery },
+          }
+        );
+        if (error) throw error;
+        const quotes = (data?.quotes || []) as SearchAssetResult[];
+        setSearchResults(quotes);
+
+        const equitySymbols = quotes
+          .filter(
+            (q) =>
+              q.quoteType === "EQUITY" &&
+              (q.exchange?.toUpperCase().includes("NSE") ||
+                q.symbol.endsWith(".NS"))
+          )
+          .map((q) => (q.symbol.endsWith(".NS") ? q.symbol : `${q.symbol}.NS`));
+
+        if (equitySymbols.length) {
+          await (async () => {
+            const unique = Array.from(new Set(equitySymbols));
+            const promises = unique.map((symbol) =>
+              supabase.functions
+                .invoke("get-stock-data", {
+                  body: { symbol },
+                })
+                .then(({ data, error }) => {
+                  if (error) {
+                    console.error(`Error for ${symbol}:`, error);
+                    return null;
+                  }
+                  return { [symbol]: data.currentPrice };
+                })
+            );
+            const results = await Promise.all(promises);
+            const mergedData = results
+              .filter(Boolean)
+              .reduce(
+                (acc, current) => ({ ...acc, ...current }),
+                {} as Record<string, StockData>
+              );
+            setStockData((prev) => ({ ...prev, ...mergedData }));
+          })();
+        }
+      } catch (err) {
+        console.error("Predictions search error:", err);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleStockClick = (symbol: string) => {
     navigate(`/predictions/${symbol}`);
   };
 
-  const filteredStocks = stocks.filter((stock) =>
-    stock.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Build list to display: when searching, show global results; otherwise default list
+  const displaySymbols = useMemo(() => {
+    if (!searchQuery) return defaultStocks;
+    if (!searchResults.length) return [] as string[];
+
+    return searchResults
+      .filter(
+        (q) =>
+          q.quoteType === "EQUITY" &&
+          (q.exchange?.toUpperCase().includes("NSE") ||
+            q.symbol.endsWith(".NS"))
+      )
+      .map((q) => (q.symbol.endsWith(".NS") ? q.symbol : `${q.symbol}.NS`));
+  }, [searchQuery, searchResults]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -87,13 +201,13 @@ const Predictions = () => {
           />
         </div>
 
-        {loading ? (
+        {loading || searchLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="loader border-t-4 border-learngreen-600 rounded-full w-12 h-12 animate-spin"></div>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filteredStocks.map((symbol) => {
+            {displaySymbols.map((symbol) => {
               const data = stockData[symbol];
               const price = data?.price ?? 0;
               const diff = data?.diff ?? 0;

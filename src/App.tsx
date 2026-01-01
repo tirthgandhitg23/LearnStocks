@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 
 // ✅ Import the new StockDetail page
 import StockDetail from "./pages/StockDetail";
+import SearchStockDetail from "./pages/SearchStockDetail";
 import HoldingsPage from "./pages/Holdings";
 
 const queryClient = new QueryClient();
@@ -26,15 +27,19 @@ const queryClient = new QueryClient();
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
   }
-  
+
   if (!user) {
     return <Navigate to="/login" />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -49,71 +54,117 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile-setup" element={<ProfileSetup />} />
-            <Route path="/home" element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            } />
-            <Route path="/holdings" element={
-              <ProtectedRoute>
-                <HoldingsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/search" element={
-              <ProtectedRoute>
-                <Search />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/games" element={
-              <ProtectedRoute>
-                <Games />
-              </ProtectedRoute>
-            } />
-            
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/holdings"
+              element={
+                <ProtectedRoute>
+                  <HoldingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <Search />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/games"
+              element={
+                <ProtectedRoute>
+                  <Games />
+                </ProtectedRoute>
+              }
+            />
+
             {/* ✅ Predictions list */}
-            <Route path="/predictions" element={
-              <ProtectedRoute>
-                <Predictions />
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/predictions"
+              element={
+                <ProtectedRoute>
+                  <Predictions />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ✅ Stock detail (dynamic route) */}
-            <Route path="/predictions/:symbol" element={
-              <ProtectedRoute>
-                <StockDetail />
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/predictions/:symbol"
+              element={
+                <ProtectedRoute>
+                  <StockDetail />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/psg" element={
-              <ProtectedRoute>
-                <PSG />
-              </ProtectedRoute>
-            } />
-            <Route path="/more" element={
-              <ProtectedRoute>
-                <More />
-              </ProtectedRoute>
-            } />
-            <Route path="/diversification/*" element={
-              <ProtectedRoute>
-                <More />
-              </ProtectedRoute>
-            } />
-            <Route path="/learning/*" element={
-              <ProtectedRoute>
-                <More />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings/*" element={
-              <ProtectedRoute>
-                <More />
-              </ProtectedRoute>
-            } />
+            {/* Read-only stock view for Search page */}
+            <Route
+              path="/stock/:symbol"
+              element={
+                <ProtectedRoute>
+                  <SearchStockDetail />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/psg"
+              element={
+                <ProtectedRoute>
+                  <PSG />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/more"
+              element={
+                <ProtectedRoute>
+                  <More />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/diversification/*"
+              element={
+                <ProtectedRoute>
+                  <More />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learning/*"
+              element={
+                <ProtectedRoute>
+                  <More />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/*"
+              element={
+                <ProtectedRoute>
+                  <More />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
