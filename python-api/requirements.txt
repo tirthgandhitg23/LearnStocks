@@ -1,6 +1,8 @@
 fastapi
-uvicorn[standard]
+uvicorn
 pandas
+numpy
 scikit-learn
 tensorflow
-numpy
+python-dotenv
+supabase
