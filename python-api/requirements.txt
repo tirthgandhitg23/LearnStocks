@@ -1,8 +1,9 @@
 fastapi
 uvicorn
-pandas
 numpy
+pandas
 scikit-learn
 tensorflow
 python-dotenv
 supabase
+vaderSentiment
