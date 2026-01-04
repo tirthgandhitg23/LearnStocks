@@ -3,5 +3,6 @@ services:
     name: learnstocks-backend
     env: python
     rootDir: python-api
+    pythonVersion: 3.10
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
