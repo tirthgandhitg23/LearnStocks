@@ -104,6 +104,7 @@ const Login = () => {
         email,
         password,
         options: {
+          emailRedirectTo: new URL("/", window.location.origin).toString(),
           data: {
             full_name: name,
           },
