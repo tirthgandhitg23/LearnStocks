@@ -5,9 +5,11 @@
 const IST_OFFSET_MINUTES = 5 * 60 + 30; // +330 minutes
 
 function getNowInIST(date: Date = new Date()): Date {
-  // date.getTimezoneOffset() is minutes behind UTC (e.g., IST user in UTC+5:30 will see -330?)
-  // We'll convert: IST time = UTC time + 330 minutes
-  const utcMs = date.getTime() + date.getTimezoneOffset() * 60_000; // normalize to UTC by adding offset
+  // Treat the incoming date's timestamp as UTC and shift it to IST.
+  // new Date().getTime() is already milliseconds since the Unix epoch in UTC,
+  // so we do NOT need to apply getTimezoneOffset here. We simply add the
+  // fixed IST offset and then consistently read components using UTC APIs.
+  const utcMs = date.getTime();
   const istMs = utcMs + IST_OFFSET_MINUTES * 60_000;
   return new Date(istMs);
 }
@@ -27,7 +29,10 @@ export function isNSEMarketOpen(now: Date = new Date()): boolean {
   return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
 }
 
-export function nextMarketSession(now: Date = new Date()): { opensAt: Date; isOpen: boolean } {
+export function nextMarketSession(now: Date = new Date()): {
+  opensAt: Date;
+  isOpen: boolean;
+} {
   const ist = getNowInIST(now);
   let day = ist.getUTCDay();
   let y = ist.getUTCFullYear();
@@ -38,16 +43,20 @@ export function nextMarketSession(now: Date = new Date()): { opensAt: Date; isOp
   const openMinutes = 9 * 60 + 15;
   const currentMinutes = hours * 60 + minutes;
   if (isNSEMarketOpen(now)) return { opensAt: ist, isOpen: true };
-  if (day === 6) { // Saturday -> next Monday
+  if (day === 6) {
+    // Saturday -> next Monday
     d += 2;
-  } else if (day === 0) { // Sunday -> next Monday
+  } else if (day === 0) {
+    // Sunday -> next Monday
     d += 1;
-  } else if (currentMinutes > openMinutes) { // past today's close -> next day
+  } else if (currentMinutes > openMinutes) {
+    // past today's close -> next day
     d += 1;
     // if next day is weekend, roll forward
     const temp = new Date(Date.UTC(y, m, d));
     let w = temp.getUTCDay();
-    if (w === 6) d += 2; else if (w === 0) d += 1;
+    if (w === 6) d += 2;
+    else if (w === 0) d += 1;
   }
   const opensAtUTC = Date.UTC(y, m, d, 9, 15) - IST_OFFSET_MINUTES * 60_000; // reverse transform to UTC epoch
   return { opensAt: new Date(opensAtUTC), isOpen: false };
