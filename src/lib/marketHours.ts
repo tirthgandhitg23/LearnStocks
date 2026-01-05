@@ -1,25 +1,9 @@
-// NSE Market hours: Monday - Friday, 09:15 to 15:30 IST (India Standard Time, UTC+5:30)
-// We compute using the user's local time by converting current UTC to IST offset.
-// NOTE: This is a simple approximation and does not yet account for trading holidays.
-
-const IST_OFFSET_MINUTES = 5 * 60 + 30; // +330 minutes
-
-function getNowInIST(date: Date = new Date()): Date {
-  // Treat the incoming date's timestamp as UTC and shift it to IST.
-  // new Date().getTime() is already milliseconds since the Unix epoch in UTC,
-  // so we do NOT need to apply getTimezoneOffset here. We simply add the
-  // fixed IST offset and then consistently read components using UTC APIs.
-  const utcMs = date.getTime();
-  const istMs = utcMs + IST_OFFSET_MINUTES * 60_000;
-  return new Date(istMs);
-}
-
 export function isNSEMarketOpen(now: Date = new Date()): boolean {
-  const ist = getNowInIST(now);
-  const day = ist.getUTCDay(); // still UTC day on the shifted date object; we'll derive local components via getHours
-  // Because we constructed ist as a shifted Date in UTC timeline, we should use getUTCHours/minutes for consistency
-  const hours = ist.getUTCHours();
-  const minutes = ist.getUTCMinutes();
+  // Use the user's local system time. For LearnStocks we assume
+  // users are primarily in India with their device timezone set to IST.
+  const day = now.getDay(); // 0=Sun ... 6=Sat in local time
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
   // Monday=1 ... Friday=5 (UTC Sunday=0)
   if (day === 0 || day === 6) return false; // Sunday(0) or Saturday(6)
   // Market window 09:15 to 15:30 inclusive start, exclusive end after 15:30
@@ -33,16 +17,16 @@ export function nextMarketSession(now: Date = new Date()): {
   opensAt: Date;
   isOpen: boolean;
 } {
-  const ist = getNowInIST(now);
-  let day = ist.getUTCDay();
-  let y = ist.getUTCFullYear();
-  let m = ist.getUTCMonth();
-  let d = ist.getUTCDate();
-  const hours = ist.getUTCHours();
-  const minutes = ist.getUTCMinutes();
+  // Compute next session using local (assumed IST) time.
+  let day = now.getDay();
+  let y = now.getFullYear();
+  let m = now.getMonth();
+  let d = now.getDate();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
   const openMinutes = 9 * 60 + 15;
   const currentMinutes = hours * 60 + minutes;
-  if (isNSEMarketOpen(now)) return { opensAt: ist, isOpen: true };
+  if (isNSEMarketOpen(now)) return { opensAt: now, isOpen: true };
   if (day === 6) {
     // Saturday -> next Monday
     d += 2;
@@ -53,13 +37,13 @@ export function nextMarketSession(now: Date = new Date()): {
     // past today's close -> next day
     d += 1;
     // if next day is weekend, roll forward
-    const temp = new Date(Date.UTC(y, m, d));
-    let w = temp.getUTCDay();
+    const temp = new Date(y, m, d);
+    let w = temp.getDay();
     if (w === 6) d += 2;
     else if (w === 0) d += 1;
   }
-  const opensAtUTC = Date.UTC(y, m, d, 9, 15) - IST_OFFSET_MINUTES * 60_000; // reverse transform to UTC epoch
-  return { opensAt: new Date(opensAtUTC), isOpen: false };
+  const opensAt = new Date(y, m, d, 9, 15);
+  return { opensAt, isOpen: false };
 }
 
 export function marketStatusMessage(): string {
