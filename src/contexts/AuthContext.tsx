@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { usePortfolioStore } from "@/stores/portfolioStore";
 import { useBalanceStore } from "@/stores/balanceStore";
+import { useGamePointsStore } from "@/stores/gamePointsStore";
+import { useMarketChallengeStore } from "@/stores/marketChallengeStore";
 
 interface AuthContextProps {
   user: User | null;
@@ -95,6 +97,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         try {
           usePortfolioStore.getState().clearAll();
           useBalanceStore.getState().setBalance(0);
+          // Clear all game-related local state so quiz/challenge
+          // points and predictions are not shared across accounts.
+          useGamePointsStore.getState().clearAll();
+          useMarketChallengeStore.getState().clearAll();
         } catch (err) {
           console.error("Error clearing local stores on sign-out:", err);
         }
@@ -139,6 +145,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       try {
         usePortfolioStore.getState().clearAll();
         useBalanceStore.getState().setBalance(0);
+        useGamePointsStore.getState().clearAll();
+        useMarketChallengeStore.getState().clearAll();
       } catch (err) {
         console.error("Error clearing local stores during sign-out:", err);
       }

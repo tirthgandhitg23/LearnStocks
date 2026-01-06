@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,66 +24,78 @@ const LoginReward = ({ isFirstLogin, lastLoginDate }: LoginRewardProps) => {
   const [rewardAmount, setRewardAmount] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
   const { user } = useAuth();
-  
+
   useEffect(() => {
     // Check if user should get a login reward
     const checkLoginReward = () => {
       if (!user) return; // Don't show rewards if not logged in
-      
-      if (isFirstLogin) {
+
+      const welcomeKey = `welcome_bonus_claimed_${user.id}`;
+      const hasClaimedWelcome = localStorage.getItem(welcomeKey) === "1";
+
+      // First-time welcome bonus: only show if this user hasn't
+      // already claimed it on this device.
+      if (isFirstLogin && !hasClaimedWelcome) {
         setRewardAmount(10000);
         setShowReward(true);
         return;
       }
-      
+
       if (!lastLoginDate) return;
-      
+
       const lastLogin = new Date(lastLoginDate);
       const today = new Date();
-      
+
       // Reset hours, minutes, seconds and milliseconds for date comparison
       lastLogin.setHours(0, 0, 0, 0);
       today.setHours(0, 0, 0, 0);
-      
+
       // Check if last login was before today
       if (lastLogin < today) {
         setRewardAmount(200);
         setShowReward(true);
       }
     };
-    
+
     // Show the reward after a short delay
     setTimeout(() => {
       checkLoginReward();
     }, 1000);
   }, [isFirstLogin, lastLoginDate, user]);
-  
+
   const handleClaimReward = async () => {
     if (!user || isUpdating) return;
-    
+
     try {
       setIsUpdating(true);
-      
+
       // Trigger confetti animation
       confetti({
         particleCount: 100,
         spread: 70,
-        origin: { y: 0.6 }
+        origin: { y: 0.6 },
       });
-      
+
       // Call the increment_points RPC function to add points
-      const { data, error } = await supabase.rpc('increment_points', {
-        amount: rewardAmount
+      const { data, error } = await supabase.rpc("increment_points", {
+        amount: rewardAmount,
       });
-      
+
       if (error) {
         console.error("Error updating points:", error);
         toast.error("Failed to update points. Please try again.");
         return;
       }
-      
+
       toast.success(`${rewardAmount} points added to your account!`);
-      
+
+      // If this was the one-time welcome bonus, remember it for
+      // this user so they can't claim 10,000 multiple times.
+      if (isFirstLogin && rewardAmount >= 10000) {
+        const welcomeKey = `welcome_bonus_claimed_${user.id}`;
+        localStorage.setItem(welcomeKey, "1");
+      }
+
       // Close dialog after a delay
       setTimeout(() => {
         setShowReward(false);
@@ -105,12 +116,12 @@ const LoginReward = ({ isFirstLogin, lastLoginDate }: LoginRewardProps) => {
             {isFirstLogin ? "Welcome Bonus!" : "Daily Login Reward!"}
           </DialogTitle>
           <DialogDescription className="text-center">
-            {isFirstLogin 
+            {isFirstLogin
               ? "Thanks for joining LearnStocks! Here's some virtual currency to start your journey."
               : "Thanks for coming back! Here's your daily login reward."}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex flex-col items-center justify-center py-6">
           <div className="bg-learngreen-100 p-4 rounded-full mb-4">
             <Coins className="h-12 w-12 text-learngreen-600" />
@@ -119,15 +130,15 @@ const LoginReward = ({ isFirstLogin, lastLoginDate }: LoginRewardProps) => {
             +₹{rewardAmount}
           </div>
           <p className="text-gray-600 mt-2">
-            {isFirstLogin 
+            {isFirstLogin
               ? "Start investing with your virtual currency"
               : "Keep logging in daily for more rewards!"}
           </p>
         </div>
-        
+
         <DialogFooter>
-          <Button 
-            onClick={handleClaimReward} 
+          <Button
+            onClick={handleClaimReward}
             className="w-full bg-learngreen-600 hover:bg-learngreen-700"
             disabled={isUpdating}
           >
