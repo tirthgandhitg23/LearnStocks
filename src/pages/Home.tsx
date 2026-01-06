@@ -30,6 +30,7 @@ const Home = () => {
   const history = usePortfolioStore((s) => s.history);
   const addHistoryPoint = usePortfolioStore((s) => s.addHistoryPoint);
   const sellStock = usePortfolioStore((s) => s.sellStock);
+  const syncFromBackend = usePortfolioStore((s) => s.syncFromBackend);
   const { prices, fetchPrices, setSymbols } = useLivePrices([], 5000);
   // Sell dialog state for holdings list
   const [isSellDialogOpen, setIsSellDialogOpen] = useState(false);
@@ -70,20 +71,20 @@ const Home = () => {
         console.error("Error fetching user data:", error);
         toast.error("Failed to load your profile data");
         return;
-        const investedValue = portfolio.holdings.reduce((s, h) => {
-          const p =
-            combined[h.symbol]?.price ??
-            mockStocks.find((m) => m.id === h.stockId)?.price ??
-            h.avgBuyPrice;
-          return s + h.quantity * p;
-        }, 0);
-        usePortfolioStore.getState().addHistoryPoint(investedValue);
+      }
+
+      if (data) {
+        const remotePoints = data.points || 0;
+        setUserPoints(remotePoints);
+
+        // Initialize local cash balance from remote points once per user
         const initKey = `balance_initialized_${user.id}`;
         const alreadyInit = localStorage.getItem(initKey);
         if (!alreadyInit) {
-          setBalance(userPoints);
+          setBalance(remotePoints);
           localStorage.setItem(initKey, "1");
         }
+
         setLastLoginDate(data.last_login_date);
         setIsFirstLogin(!data.profile_completed);
       }
@@ -102,6 +103,10 @@ const Home = () => {
     fetchUserData();
 
     if (user) {
+      // Always sync holdings from backend on home load so
+      // every device shows the same portfolio for this user.
+      void syncFromBackend();
+
       const pointsChannel = supabase
         .channel("profile-changes")
         .on(
@@ -132,7 +137,7 @@ const Home = () => {
         supabase.removeChannel(pointsChannel);
       };
     }
-  }, [user, fetchUserData, setBalance]);
+  }, [user, fetchUserData, setBalance, syncFromBackend]);
 
   // set symbols to fetch: holdings only (removed Trading section)
   useEffect(() => {
