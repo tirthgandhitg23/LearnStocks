@@ -69,27 +69,15 @@ Provide personalized investment advice based on their profile. Be professional, 
     setInput("");
     setIsLoading(true);
 
-    // Track which URL we are actually calling for easier debugging
-    let devProxy: string | null = null;
-    let envUrl: string | undefined;
-    let base = "";
-    let url = "";
-
     try {
-      // Prefer the Vite dev proxy during development so requests are same-origin.
-      // Vite exposes `import.meta.env.DEV` as a boolean at build time.
-      devProxy = (import.meta as any).env?.DEV ? "/advisor-api" : null;
-      envUrl = (import.meta as any).env?.VITE_ADVISOR_URL || undefined;
-      base = apiBase || (devProxy ?? envUrl ?? "http://localhost:3000");
-      url = `${base}/api/chat`;
+      const isDev = (import.meta as any).env?.DEV;
+      const proxyBase = "/advisor-api";
+      const envUrl = (import.meta as any).env?.VITE_ADVISOR_URL || undefined;
 
-      console.log("[InvestmentChat] Calling advisor API", {
-        devProxy,
-        envUrl,
-        apiBase,
-        base,
-        url,
-      });
+      // In dev, use Vite proxy (/advisor-api -> localhost:3000).
+      // In production, prefer same proxy path which Vercel rewrites to the advisor app.
+      const base = apiBase || (isDev ? proxyBase : proxyBase);
+      const url = `${base}/api/chat`;
 
       const response = await fetch(url, {
         method: "POST",
@@ -135,11 +123,7 @@ Provide personalized investment advice based on their profile. Be professional, 
       const msg = error?.message || String(error);
       const isConnRefused = /refused|Failed to fetch|ECONNREFUSED/i.test(msg);
       const helpText = isConnRefused
-        ? `Error: ${msg}. Advisor URL tried: ${
-            url || "(unknown)"
-          }. Resolved base: ${base || "(empty)"}. VITE_ADVISOR_URL at build: ${
-            envUrl || "(undefined)"
-          }. If running locally, make sure the investment-advisor server is running on http://localhost:3000. In production, set VITE_ADVISOR_URL in the LearnStocks Vercel project to your deployed advisor URL.`
+        ? `Error: ${msg}. Make sure the investment-advisor server is running on http://localhost:3000 and restart LearnStocks dev server. Start it with:\n\ncd d:/Projects/new/investment-advisor-chatbot\nnpm install\nnpm run dev\n\nOr update VITE_ADVISOR_URL in LearnStocks/.env to point to a reachable advisor API.`
         : `Error: ${msg}`;
 
       const errorMessage: Message = {
