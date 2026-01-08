@@ -16,6 +16,7 @@ import PSG from "./pages/PSG";
 import More from "./pages/More";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import ChatbotWidget from "./components/ChatbotWidget";
 
 // ✅ Import the new StockDetail page
 import StockDetail from "./pages/StockDetail";
@@ -169,6 +170,7 @@ const App = () => (
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <ChatbotWidget />
         </TooltipProvider>
       </AuthProvider>
     </BrowserRouter>
