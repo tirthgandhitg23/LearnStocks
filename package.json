@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:advisor": "npm run dev --prefix investment-advisor-chatbot",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
