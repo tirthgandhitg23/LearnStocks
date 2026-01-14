@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { motion } from "framer-motion";
+import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +58,50 @@ interface AnalysisResult {
   };
 }
 
+
+
+const CountingNumber = ({ value }: { value: number }) => {
+  const [display, setDisplay] = useState(0);
+  React.useEffect(() => {
+    const duration = 2000;
+    const startTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      setDisplay(Math.floor(value * ease));
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setDisplay(value);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [value]);
+
+  return <>{display}</>;
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 60, damping: 12 }
+  }
+};
+
 const PSG = () => {
   const { user } = useAuth();
 
@@ -96,6 +142,17 @@ const PSG = () => {
       }
     }
     return data;
+  }, [analysisResult]);
+
+  React.useEffect(() => {
+    if (analysisResult?.portfolio_health?.score && analysisResult.portfolio_health.score >= 80) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#10B981', '#3B82F6', '#F59E0B']
+      });
+    }
   }, [analysisResult]);
 
   // ---------------------------------------------
@@ -260,149 +317,173 @@ const PSG = () => {
               </Card>
             </div>
           ) : (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-8"
+            >
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Portfolio Diagnosis</h2>
-                <Button variant="outline" onClick={resetAnalysis}>Run New Analysis</Button>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Briefcase className="h-6 w-6 text-primary" />
+                  Portfolio Diagnosis
+                </h2>
+                <Button variant="outline" onClick={resetAnalysis} className="gap-2">
+                  <Sparkles className="h-4 w-4 text-yellow-500" />
+                  Run New Analysis
+                </Button>
               </div>
 
               {/* Health Score */}
-              <div className="grid md:grid-cols-2 gap-6">
+              <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-6">
                 {/* Health Score */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Health Score</CardTitle>
-                    <CardDescription>Composite variance & risk score</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center py-6">
-                    <div className={`text-5xl font-bold mb-2 ${getColor(analysisResult.portfolio_health.score)}`}>
-                      {analysisResult.portfolio_health.score}/100
-                    </div>
-                    <Progress value={analysisResult.portfolio_health.score} className={`h-3 w-full max-w-md ${getProgressColor(analysisResult.portfolio_health.score)}`} />
+                <motion.div whileHover={{ scale: 1.02 }} className="h-full">
+                  <Card className="h-full shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader>
+                      <CardTitle>Health Score</CardTitle>
+                      <CardDescription>Composite variance & risk score</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center py-6">
+                      <div className={`text-5xl font-bold mb-2 ${getColor(analysisResult.portfolio_health.score)}`}>
+                        <CountingNumber value={analysisResult.portfolio_health.score} />/100
+                      </div>
+                      <Progress value={analysisResult.portfolio_health.score} className={`h-3 w-full max-w-md ${getProgressColor(analysisResult.portfolio_health.score)}`} />
 
-                    <div className="grid grid-cols-2 gap-4 mt-8 w-full">
-                      {Object.entries(analysisResult.portfolio_health.components).slice(0, 4).map(([key, val]) => (
-                        <div key={key} className="text-center p-3 bg-gray-50 rounded">
-                          <div className="text-xs text-gray-500 uppercase mb-1">{key.replace("_score", "")}</div>
-                          <div className="font-semibold">{val as number}/100</div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="grid grid-cols-2 gap-4 mt-8 w-full">
+                        {Object.entries(analysisResult.portfolio_health.components).slice(0, 4).map(([key, val]) => (
+                          <div key={key} className="text-center p-3 bg-gray-50 rounded">
+                            <div className="text-xs text-gray-500 uppercase mb-1">{key.replace("_score", "")}</div>
+                            <div className="font-semibold">{val as number}/100</div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
 
                 {/* Allocation Chart */}
-                <Card className="flex flex-col">
-                  <CardHeader>
-                    <CardTitle>Allocation</CardTitle>
-                    <CardDescription>Top 10 Holdings Breakdown</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 min-h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={0}
-                          outerRadius={100}
-                          paddingAngle={2}
-                          dataKey="allocation_pct"
-                          nameKey="symbol"
-                        >
-                          {chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(val: number) => `${val.toFixed(1)}%`} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
+                <motion.div whileHover={{ scale: 1.02 }} className="h-full">
+                  <Card className="flex flex-col h-full shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader>
+                      <CardTitle>Allocation</CardTitle>
+                      <CardDescription>Top 10 Holdings Breakdown</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 min-h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={0}
+                            outerRadius={100}
+                            paddingAngle={2}
+                            dataKey="allocation_pct"
+                            nameKey="symbol"
+                            animationDuration={1500}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(val: number) => `${val.toFixed(1)}%`} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
 
               {/* Suggestions */}
-              <div className="grid md:grid-cols-3 gap-6">
-                <Card className="border-l-4 border-l-green-500">
-                  <CardHeader><CardTitle className="text-green-700">Buy / Add</CardTitle></CardHeader>
+              <motion.div variants={itemVariants} className="grid md:grid-cols-3 gap-6">
+                <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }} className="h-full">
+                  <Card className="border-l-4 border-l-green-500 h-full shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader><CardTitle className="text-green-700">Buy / Add</CardTitle></CardHeader>
+                    <CardContent>
+                      {analysisResult.suggestions.buy.length ? (
+                        <ul className="space-y-2">
+                          {analysisResult.suggestions.buy.map((s: any) => (
+                            <li key={s.symbol} className="flex justify-between border-b pb-1">
+                              <span>{s.symbol}</span> <span className="text-green-600 text-sm font-medium">Underweight</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <span className="text-sm text-gray-500">No immediate buy signals.</span>}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }} className="h-full">
+                  <Card className="border-l-4 border-l-yellow-500 h-full shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader><CardTitle className="text-yellow-700">Hold</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-gray-600">
+                        {analysisResult.suggestions.hold.length > 0 ? (
+                          <>
+                            {analysisResult.suggestions.hold.slice(0, 5).map((s: any) => s.symbol).join(", ")}
+                            {analysisResult.suggestions.hold.length > 5 && "..."}
+                          </>
+                        ) : (
+                          <span className="text-gray-500">No specific hold recommendations.</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }} className="h-full">
+                  <Card className="border-l-4 border-l-red-500 h-full shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader><CardTitle className="text-red-700">Reduce Risk</CardTitle></CardHeader>
+                    <CardContent>
+                      {analysisResult.suggestions.reduce.length ? (
+                        <ul className="space-y-2">
+                          {analysisResult.suggestions.reduce.map((s: any) => (
+                            <li key={s.symbol} className="flex justify-between border-b pb-1">
+                              <span>{s.symbol}</span> <span className="text-red-600 text-sm font-medium">Overweight</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <span className="text-sm text-gray-500">Allocation looks balanced.</span>}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
+
+              {/* Holdings Table */}
+              <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader><CardTitle>Holdings Analysis</CardTitle></CardHeader>
                   <CardContent>
-                    {analysisResult.suggestions.buy.length ? (
-                      <ul className="space-y-2">
-                        {analysisResult.suggestions.buy.map((s: any) => (
-                          <li key={s.symbol} className="flex justify-between border-b pb-1">
-                            <span>{s.symbol}</span> <span className="text-green-600 text-sm font-medium">Underweight</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : <span className="text-sm text-gray-500">No immediate buy signals.</span>}
-                  </CardContent>
-                </Card>
-                <Card className="border-l-4 border-l-yellow-500">
-                  <CardHeader><CardTitle className="text-yellow-700">Hold</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-gray-600">
-                      {analysisResult.suggestions.hold.length > 0 ? (
-                        <>
-                          {analysisResult.suggestions.hold.slice(0, 5).map((s: any) => s.symbol).join(", ")}
-                          {analysisResult.suggestions.hold.length > 5 && "..."}
-                        </>
-                      ) : (
-                        <span className="text-gray-500">No specific hold recommendations.</span>
-                      )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="p-2 text-left">Symbol</th>
+                            <th className="p-2 text-right">Inv. Value</th>
+                            <th className="p-2 text-right">Curr. Value</th>
+                            <th className="p-2 text-right">PnL</th>
+                            <th className="p-2 text-right">Alloc %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analysisResult.holdings.map((h) => (
+                            <tr key={h.symbol} className="border-b hover:bg-gray-50">
+                              <td className="p-2 font-medium">{h.symbol}</td>
+                              <td className="p-2 text-right">₹{h.invested_value.toFixed(0)}</td>
+                              <td className="p-2 text-right">₹{h.current_value.toFixed(0)}</td>
+                              <td className={`p-2 text-right font-medium ${h.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {h.pnl_pct.toFixed(2)}%
+                              </td>
+                              <td className="p-2 text-right">{h.allocation_pct.toFixed(1)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border-l-4 border-l-red-500">
-                  <CardHeader><CardTitle className="text-red-700">Reduce Risk</CardTitle></CardHeader>
-                  <CardContent>
-                    {analysisResult.suggestions.reduce.length ? (
-                      <ul className="space-y-2">
-                        {analysisResult.suggestions.reduce.map((s: any) => (
-                          <li key={s.symbol} className="flex justify-between border-b pb-1">
-                            <span>{s.symbol}</span> <span className="text-red-600 text-sm font-medium">Overweight</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : <span className="text-sm text-gray-500">Allocation looks balanced.</span>}
-                  </CardContent>
-                </Card>
-              </div>
+              </motion.div>
 
-              {/* Holdings Table */}
-              <Card>
-                <CardHeader><CardTitle>Holdings Analysis</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="p-2 text-left">Symbol</th>
-                          <th className="p-2 text-right">Inv. Value</th>
-                          <th className="p-2 text-right">Curr. Value</th>
-                          <th className="p-2 text-right">PnL</th>
-                          <th className="p-2 text-right">Alloc %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysisResult.holdings.map((h) => (
-                          <tr key={h.symbol} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium">{h.symbol}</td>
-                            <td className="p-2 text-right">₹{h.invested_value.toFixed(0)}</td>
-                            <td className="p-2 text-right">₹{h.current_value.toFixed(0)}</td>
-                            <td className={`p-2 text-right font-medium ${h.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {h.pnl_pct.toFixed(2)}%
-                            </td>
-                            <td className="p-2 text-right">{h.allocation_pct.toFixed(1)}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

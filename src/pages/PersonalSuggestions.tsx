@@ -26,7 +26,7 @@ const PersonalSuggestions = () => {
 
     // Suggestions State
     const [suggestions, setSuggestions] = useState<StockSuggestion[]>([]);
-    const [marketPref, setMarketPref] = useState<"Global" | "US" | "India">("Global");
+    const [marketPref, setMarketPref] = useState<"Global" | "US" | "India">("India");
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const { fetchPrices } = useLivePrices([], 0); // Manual fetch only

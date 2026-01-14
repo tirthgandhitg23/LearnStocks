@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,7 +141,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
-      <div className="container mx-auto px-4 py-8 max-w-2xl"> {/* Narrowed container */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="container mx-auto px-4 py-8 max-w-2xl"> {/* Narrowed container */}
         <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
           <UserCircle className="h-8 w-8 text-learngreen-600" /> Your Profile
         </h1>
@@ -256,7 +257,7 @@ const Profile = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -1,8 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { motion } from "framer-motion";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const tabVariants = {
+  hidden: { opacity: 0, x: 20 },
+  show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+};
 import { useLocation } from "react-router-dom";
 import NavigationBar from "@/components/NavigationBar";
 import StockQuiz from "@/components/StockQuiz";
-import KnowledgeProgressChart from "@/components/KnowledgeProgressChart";
+import GamePointsChart from "@/components/GamePointsChart";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -130,10 +141,10 @@ const Games = () => {
     .reduce((sum, e) => sum + e.points, 0);
   const marketOpen = isNSEMarketOpen();
 
-  // Knowledge Progress
-  const [knowledgeSeries, setKnowledgeSeries] = useState<KnowledgeProgressPoint[]>([]);
-  const [knowledgeTrend, setKnowledgeTrend] = useState<KnowledgeTrend | null>(null);
-  const [knowledgeLoading, setKnowledgeLoading] = useState(false);
+  // Points Progress
+  const [pointsHistory, setPointsHistory] = useState<{ date: string; points: number }[]>([]);
+  const [totalPointsHistory, setTotalPointsHistory] = useState(0);
+  const [pointsLoading, setPointsLoading] = useState(false);
 
   // -- EFFECTS --
 
@@ -151,29 +162,47 @@ const Games = () => {
     setSymbols(subset);
   }, [setSymbols]);
 
-  // 2. Fetch Knowledge Progress
-  const refreshKnowledgeProgress = useCallback(async () => {
+  // 2. Fetch Points History (Rewards)
+  const refreshPointsHistory = useCallback(async () => {
     if (!user) return;
-    setKnowledgeLoading(true);
+    setPointsLoading(true);
     try {
-      const series = await fetchKnowledgeProgressSeries(user.id);
-      setKnowledgeSeries(series);
-      const trend = series.length > 0 ? detectOverallTrend(series) : "stagnant";
-      setKnowledgeTrend(trend);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("created_at, price")
+        .eq("user_id", user.id)
+        .eq("type", "REWARD")
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      // Aggregate by day
+      const dailyMap: Record<string, number> = {};
+      let runningTotal = 0;
+      data.forEach((tx) => {
+        const date = new Date(tx.created_at).toISOString().slice(0, 10);
+        const pts = Number(tx.price); // Price in REWARD tx is points
+        dailyMap[date] = (dailyMap[date] || 0) + pts;
+        runningTotal += pts;
+      });
+
+      const series = Object.entries(dailyMap).map(([date, points]) => ({ date, points }));
+      setPointsHistory(series);
+      setTotalPointsHistory(runningTotal);
     } catch (err) {
-      console.error("Failed to fetch knowledge progression", err);
+      console.error("Failed to fetch points history", err);
     } finally {
-      setKnowledgeLoading(false);
+      setPointsLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    if (user) refreshKnowledgeProgress();
+    if (user) refreshPointsHistory();
     else {
-      setKnowledgeSeries([]);
-      setKnowledgeTrend(null);
+      setPointsHistory([]);
+      setTotalPointsHistory(0);
     }
-  }, [user, refreshKnowledgeProgress]);
+  }, [user, refreshPointsHistory]);
 
   // 3. Handle Tab Change from Router
   useEffect(() => {
@@ -264,7 +293,7 @@ const Games = () => {
       return;
     }
     evaluatePredictions(getDayChangePercent).then(() => {
-      if (user) refreshKnowledgeProgress();
+      if (user) refreshPointsHistory();
     });
   };
 
@@ -336,7 +365,18 @@ const Games = () => {
     addToBalance(earnedPoints);
     try {
       addGamePointEvent({ source: "quiz", label: selectedQuiz.title, points: earnedPoints });
-    } catch { }
+
+      // Store Daily Points in Supabase as a Transaction
+      await supabase.from("transactions").insert({
+        user_id: user.id,
+        stock_symbol: "GAME_REWARD",
+        quantity: 1,
+        price: earnedPoints,
+        type: "REWARD",
+        created_at: new Date().toISOString()
+      } as any);
+
+    } catch (err) { console.error("Failed to log points", err); }
 
     toast.success(`Quiz Complete! You earned ${earnedPoints} points! 🏆`);
 
@@ -356,8 +396,8 @@ const Games = () => {
         outcome: "completed",
         metadata: { title: selectedQuiz.title, percentCorrect, totalQuestions },
       });
-      await updateKnowledgeProgress({ source: "quiz", gameScore: activityScore, difficultyLevel: difficulty });
-      await refreshKnowledgeProgress();
+      // Also refresh points graph
+      await refreshPointsHistory();
     } catch (e) { console.error(e); }
 
     setTimeout(() => {
@@ -468,7 +508,7 @@ const Games = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
-      <main className="container mx-auto px-4 py-6">
+      <motion.main variants={containerVariants} initial="hidden" animate="show" className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Games & Quizzes</h1>
           <div className="bg-learngreen-100 px-4 py-2 rounded-lg flex items-center shadow-sm">
@@ -479,7 +519,7 @@ const Games = () => {
 
         {user && (
           <div className="mb-6">
-            <KnowledgeProgressChart data={knowledgeSeries} trend={knowledgeTrend} loading={knowledgeLoading} />
+            <GamePointsChart data={pointsHistory} totalPoints={totalPointsHistory} loading={pointsLoading} />
           </div>
         )}
 
@@ -490,33 +530,34 @@ const Games = () => {
         )}
 
         {/* Category Tabs */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <motion.div variants={containerVariants} className="grid md:grid-cols-3 gap-6 mb-8">
           {[
             { id: "quizzes", title: "Knowledge Quizzes", icon: BookOpen, desc: "AI-Generated challenges." },
             { id: "simulator", title: "Trading Simulator", icon: Brain, desc: "Practice with virtual money." },
             { id: "challenges", title: "Market Challenges", icon: Timer, desc: "Timed prediction games." }
           ].map((cat) => (
-            <Card
-              key={cat.id}
-              className={`text-center transition-all cursor-pointer ${activeCategory === cat.id ? "border-2 border-learngreen-500 shadow-lg" : "hover:shadow-md"}`}
-              onClick={() => setActiveCategory(cat.id)}
-            >
-              <CardHeader>
-                <div className="flex justify-center mb-2">
-                  <div className="bg-learngreen-100 p-3 rounded-full">
-                    <cat.icon className="h-8 w-8 text-learngreen-600" />
+            <motion.div key={cat.id} variants={tabVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="h-full">
+              <Card
+                className={`text-center transition-all cursor-pointer h-full ${activeCategory === cat.id ? "border-2 border-learngreen-500 shadow-lg" : "hover:shadow-md"}`}
+                onClick={() => setActiveCategory(cat.id)}
+              >
+                <CardHeader>
+                  <div className="flex justify-center mb-2">
+                    <div className="bg-learngreen-100 p-3 rounded-full">
+                      <cat.icon className="h-8 w-8 text-learngreen-600" />
+                    </div>
                   </div>
-                </div>
-                <CardTitle>{cat.title}</CardTitle>
-                <CardDescription>{cat.desc}</CardDescription>
-              </CardHeader>
-            </Card>
+                  <CardTitle>{cat.title}</CardTitle>
+                  <CardDescription>{cat.desc}</CardDescription>
+                </CardHeader>
+              </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* QUIZZES TAB */}
         {activeCategory === "quizzes" && (
-          <div>
+          <motion.div variants={tabVariants} initial="hidden" animate="show">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-semibold">Daily AI Quizzes</h2>
               <Badge className="bg-purple-100 text-purple-700"><Sparkles className="w-3 h-3 mr-1" /> AI Powered</Badge>
@@ -561,12 +602,12 @@ const Games = () => {
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* SIMULATOR TAB */}
         {activeCategory === "simulator" && (
-          <div className="space-y-6">
+          <motion.div variants={tabVariants} initial="hidden" animate="show" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Trading Simulator</CardTitle>
@@ -596,9 +637,9 @@ const Games = () => {
                       sector: "",
                     } as any;
                     return (
-                      <div key={stock.symbol} onClick={() => { setSelectedStock(display); setTradeAction("buy"); setIsTradeDialogOpen(true); }}>
+                      <motion.div key={stock.symbol} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setSelectedStock(display); setTradeAction("buy"); setIsTradeDialogOpen(true); }}>
                         <StockCard stock={display} />
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -652,12 +693,12 @@ const Games = () => {
                 setIsTradeDialogOpen(false);
               }}
             />
-          </div>
+          </motion.div>
         )}
 
         {/* CHALLENGES TAB */}
         {activeCategory === "challenges" && (
-          <div className="space-y-6">
+          <motion.div variants={tabVariants} initial="hidden" animate="show" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Daily Direction Prediction</CardTitle>
@@ -676,9 +717,9 @@ const Games = () => {
               </CardContent>
             </Card>
             <PredictionsList prices={prices} />
-          </div>
+          </motion.div>
         )}
-      </main>
+      </motion.main>
 
       <Dialog open={isQuizDialogOpen} onOpenChange={setIsQuizDialogOpen}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col bg-white">
