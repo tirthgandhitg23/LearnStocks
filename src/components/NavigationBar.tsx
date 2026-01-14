@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { BarChart, BookOpen, ChevronDown, GamepadIcon, Home, PieChart, Search, Settings, TrendingUp, User } from "lucide-react";
+import { BarChart, BookOpen, ChevronDown, GamepadIcon, Home, PieChart, Search, Settings, Sparkles, TrendingUp, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MainMenu from "./MainMenu";
 
@@ -12,11 +12,11 @@ const NavigationBar = () => {
 
   const navigation = [
     { name: "Home", href: "/home", icon: Home, current: location.pathname === "/home" },
-    { name: "Profile", href: "/profile", icon: User, current: location.pathname === "/profile" },
     { name: "Search", href: "/search", icon: Search, current: location.pathname === "/search" },
+    { name: "Analyzer", href: "/psg", icon: BarChart, current: location.pathname === "/psg" },
     { name: "Games", href: "/games", icon: GamepadIcon, current: location.pathname === "/games" },
+    { name: "PSG", href: "/suggestions", icon: Sparkles, current: location.pathname === "/suggestions" },
     { name: "Predictions", href: "/predictions", icon: TrendingUp, current: location.pathname === "/predictions" },
-    { name: "PSG", href: "/psg", icon: BarChart, current: location.pathname === "/psg" },
     {
       name: "More",
       href: "/more",

@@ -338,9 +338,15 @@ def generate_suggestions(df: pd.DataFrame) -> Dict[str, List[Dict[str, Any]]]:
     MIN_TARGET = 0.5
     MAX_TARGET = 8.0
 
-    buy_df = df[(df["allocation_pct"] < MIN_TARGET) & (df["pnl_pct"] > 0)].sort_values("allocation_pct")
-    hold_df = df[(df["allocation_pct"] >= MIN_TARGET) & (df["allocation_pct"] <= MAX_TARGET)].sort_values("allocation_pct", ascending=False)
-    reduce_df = df[(df["allocation_pct"] > MAX_TARGET) & (df["pnl_pct"] > 15)].sort_values("allocation_pct", ascending=False)
+    # definitions
+    is_buy = (df["allocation_pct"] < MIN_TARGET) & (df["pnl_pct"] > 0)
+    is_reduce = (df["allocation_pct"] > MAX_TARGET) & (df["pnl_pct"] > 15)
+
+    buy_df = df[is_buy].sort_values("allocation_pct")
+    reduce_df = df[is_reduce].sort_values("allocation_pct", ascending=False)
+    
+    # Hold is everything that is neither Buy nor Reduce
+    hold_df = df[~(is_buy | is_reduce)].sort_values("allocation_pct", ascending=False)
 
     def row_to_suggestion(r):
         return {

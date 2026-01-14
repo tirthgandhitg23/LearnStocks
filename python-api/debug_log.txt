@@ -126,3 +126,11 @@ DEBUG: Key loaded: Yes
 DEBUG: Key starts: gsk_GL... Length: 56
 DEBUG: Attempting Groq call for topic: Market News and Current Events
 DEBUG: Groq response received
+DEBUG: Key loaded: Yes
+DEBUG: Key starts: gsk_GL... Length: 56
+DEBUG: Attempting Groq call for topic: Market News and Current Events
+DEBUG: Groq response received
+DEBUG: Key loaded: Yes
+DEBUG: Key starts: gsk_GL... Length: 56
+DEBUG: Attempting Groq call for topic: Market News and Current Events
+DEBUG: Groq response received

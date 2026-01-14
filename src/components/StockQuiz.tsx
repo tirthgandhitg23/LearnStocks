@@ -30,6 +30,12 @@ const StockQuiz = ({ quiz, onComplete }: StockQuizProps) => {
   const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null);
   const [currentDifficulty, setCurrentDifficulty] = useState<"Easy" | "Medium" | "Difficult">("Easy");
 
+  // Antigravity Engine State
+  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [consecutiveWrong, setConsecutiveWrong] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [lastTimeTaken, setLastTimeTaken] = useState<number>(0);
+
   // --- ADAPTIVE SETTINGS ---
   // We will ask 5 questions total, even if pool has 9.
   const QUESTIONS_TO_ASK = 5;
@@ -162,8 +168,16 @@ const StockQuiz = ({ quiz, onComplete }: StockQuizProps) => {
       setCurrentQuestion(first);
       const actualDifficulty = (first as any).difficulty === "Difficult" ? "Hard" : ((first as any).difficulty || "Medium");
       setCurrentDifficulty(actualDifficulty);
+      setQuestionStartTime(Date.now()); // Start timer
     }
   }, [pools, askedIds, pickNextQuestion, quiz.questions]);
+
+  // Reset timer when question changes
+  useEffect(() => {
+    if (currentQuestion) {
+      setQuestionStartTime(Date.now());
+    }
+  }, [currentQuestion]);
 
   const { user } = useAuth();
 
@@ -181,6 +195,10 @@ const StockQuiz = ({ quiz, onComplete }: StockQuizProps) => {
     if (selectedOption === null) return;
     if (!currentQuestion) return;
 
+    // Capture time taken immediately
+    const timeTakenSec = (Date.now() - questionStartTime) / 1000;
+    setLastTimeTaken(timeTakenSec);
+
     const isCorrect = selectedOption === currentQuestion.correctOption;
     setAnsweredCorrectly(isCorrect);
   };
@@ -193,24 +211,76 @@ const StockQuiz = ({ quiz, onComplete }: StockQuizProps) => {
     const newAskedIds = currentQuestion ? [...askedIds, currentQuestion.id] : [...askedIds];
     setAskedIds(newAskedIds);
 
-    // --- ADAPTIVE LOGIC ---
-    // Safely derive current difficulty from the question object itself to avoid state desync
-    let currentDiffRaw = (currentQuestion as any).difficulty || currentDifficulty;
-    if (currentDiffRaw === "Difficult") currentDiffRaw = "Hard";
+    // --- ANTIGRAVITY ENGINE LOGIC ---
+    // 1. Calculate Weights
 
-    let targetDifficulty: "Easy" | "Medium" | "Hard" = currentDiffRaw as any;
+    // Accuracy Weight
+    const accuracyWeight = answeredCorrectly ? 2 : -1;
+
+    // Speed Weight (<5s fast, >15s slow)
+    let speedWeight = 0;
+    if (lastTimeTaken < 5) speedWeight = 1;
+    else if (lastTimeTaken > 15) speedWeight = -1;
+
+    // Streak Logic (Update local vars first for calculation)
+    let newConsCorrect = consecutiveCorrect;
+    let newConsWrong = consecutiveWrong;
 
     if (answeredCorrectly) {
-      // promote
-      if (targetDifficulty === "Easy") targetDifficulty = "Medium";
-      else if (targetDifficulty === "Medium") targetDifficulty = "Hard";
-      // if Hard, stay Hard
+      newConsCorrect += 1;
+      newConsWrong = 0;
     } else {
-      // demote
-      if (targetDifficulty === "Hard") targetDifficulty = "Medium";
-      else if (targetDifficulty === "Medium") targetDifficulty = "Easy";
-      // if Easy, stay Easy
+      newConsWrong += 1;
+      newConsCorrect = 0;
     }
+
+    // Streak Weight (apply if threshold met)
+    let streakWeight = 0;
+    if (newConsCorrect >= 3) streakWeight = 1;
+    if (newConsWrong >= 2) streakWeight = -2;
+
+    // Final Confidence Score
+    const confidenceScore = accuracyWeight + speedWeight + streakWeight;
+
+    // Decide Move
+    // Get current difficulty (normalized)
+    let currentDiffRaw = (currentQuestion as any).difficulty || currentDifficulty;
+    if (currentDiffRaw === "Difficult") currentDiffRaw = "Hard";
+    let d: "Easy" | "Medium" | "Hard" = currentDiffRaw as any;
+
+    let targetDifficulty = d;
+
+    // Rule Engine
+    // >= +3 -> UP
+    // <= -2 -> DOWN
+    // -1 to +2 -> SAME
+
+    if (confidenceScore >= 3) {
+      // Move UP (Stepwise)
+      if (d === "Easy") targetDifficulty = "Medium";
+      else if (d === "Medium") targetDifficulty = "Hard";
+      // Hard stays Hard
+    } else if (confidenceScore <= -2) {
+      // Move DOWN (Stepwise)
+      if (d === "Hard") targetDifficulty = "Medium";
+      else if (d === "Medium") targetDifficulty = "Easy";
+      // Easy stays Easy
+    }
+    // Else Stay Same
+
+    console.log("ANTIGRAVITY DECISION:", {
+      Answer: answeredCorrectly ? "Correct" : "Wrong",
+      Time: lastTimeTaken.toFixed(2) + "s",
+      Streak: answeredCorrectly ? newConsCorrect : newConsWrong,
+      Weights: { Accuracy: accuracyWeight, Speed: speedWeight, Streak: streakWeight },
+      TotalScore: confidenceScore,
+      Current: d,
+      Next: targetDifficulty
+    });
+
+    // Update State for next cycle
+    setConsecutiveCorrect(newConsCorrect);
+    setConsecutiveWrong(newConsWrong);
 
     setSelectedOption(null);
     setAnsweredCorrectly(null);
@@ -227,15 +297,15 @@ const StockQuiz = ({ quiz, onComplete }: StockQuizProps) => {
     let nextQuestion = pickNextQuestion(targetDifficulty, newAskedIds);
 
     if (!nextQuestion) {
-      // fallback: find any unasked
+      // fallback
       nextQuestion = quiz.questions.find((q) => !newAskedIds.includes(q.id) && q.id !== currentQuestion?.id) || null;
     }
 
     if (nextQuestion) {
       setCurrentQuestion(nextQuestion);
-      let d = (nextQuestion as any).difficulty || "Medium";
-      if (d === "Difficult") d = "Hard";
-      setCurrentDifficulty(d);
+      let nextD = (nextQuestion as any).difficulty || "Medium";
+      if (nextD === "Difficult") nextD = "Hard";
+      setCurrentDifficulty(nextD);
       setCurrentQuestionIndex((i) => i + 1);
     } else {
       setFinalScore(newScore);
@@ -243,7 +313,6 @@ const StockQuiz = ({ quiz, onComplete }: StockQuizProps) => {
       processQuizCompletion(newScore);
     }
   };
-
 
 
   const processQuizCompletion = async (totalScore: number) => {
