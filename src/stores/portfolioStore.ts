@@ -260,12 +260,16 @@ export const usePortfolioStore = create<PortfolioState>()(
                 quantity: tx.quantity,
                 price: tx.price,
                 type: tx.type,
-                date: tx.created_at
+                date: tx.created_at,
               };
             });
           }
 
-          set((state) => ({ ...state, holdings: mappedHoldings, trades: mappedTrades }));
+          set((state) => ({
+            ...state,
+            holdings: mappedHoldings,
+            trades: mappedTrades,
+          }));
         } catch (err) {
           console.error("Error syncing holdings from Supabase", err);
         }

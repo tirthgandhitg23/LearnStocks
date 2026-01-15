@@ -1,5 +1,4 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import pandas as pd
@@ -226,7 +225,7 @@ def generate_suggestions(df: pd.DataFrame) -> Dict[str, List[Dict[str, Any]]]:
     return suggestions
 
 
-@app.post("/analyze", response_model=AnalysisResult)
+@app.post("/analyze")
 async def analyze_portfolio(file: UploadFile = File(...)):
     """Accept a CSV file and return portfolio analytics as JSON.
 
@@ -248,7 +247,7 @@ async def analyze_portfolio(file: UploadFile = File(...)):
         "suggestions": suggestions
     }
 
-    return JSONResponse(content=response)
+    return response
 
 
 @app.get("/")

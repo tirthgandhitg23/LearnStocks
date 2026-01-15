@@ -3,12 +3,16 @@ import { motion } from "framer-motion";
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
 const tabVariants = {
   hidden: { opacity: 0, x: 20 },
-  show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring" as const, stiffness: 300, damping: 24 },
+  },
 };
 import { useLocation } from "react-router-dom";
 import NavigationBar from "@/components/NavigationBar";
@@ -40,7 +44,7 @@ import {
   TrendingUp,
   TrendingDown,
   Loader2,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Quiz, QuizQuestion } from "@/types";
@@ -67,18 +71,48 @@ import type {
   KnowledgeProgressPoint,
   KnowledgeTrend,
 } from "@/types";
-import { FALLBACK_QUESTIONS_BASICS, FALLBACK_QUESTIONS_TECHNICAL, FALLBACK_QUESTIONS_NEWS } from "@/data/fallbackQuizzes";
+import {
+  FALLBACK_QUESTIONS_BASICS,
+  FALLBACK_QUESTIONS_TECHNICAL,
+  FALLBACK_QUESTIONS_NEWS,
+} from "@/data/fallbackQuizzes";
 
 // == DYNAMIC CONFIGURATION ==
 
 // A larger pool of stocks to pick from randomly for the "Prediction Game"
 const MASTER_STOCK_UNIVERSE = [
-  "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "HINDUNILVR.NS",
-  "SBIN.NS", "BHARTIARTL.NS", "ITC.NS", "KOTAKBANK.NS", "LT.NS", "BAJFINANCE.NS",
-  "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "WIPRO.NS", "ADANIENT.NS",
-  "ULTRACEMCO.NS", "NESTLEIND.NS", "ONGC.NS", "TITAN.NS", "SUNPHARMA.NS",
-  "NTPC.NS", "POWERGRID.NS", "TATASTEEL.NS", "JSWSTEEL.NS", "M&M.NS",
-  "LTIM.NS", "HCLTECH.NS", "COALINDIA.NS", "TATAMOTORS.NS", "PIDILITIND.NS"
+  "RELIANCE.NS",
+  "TCS.NS",
+  "HDFCBANK.NS",
+  "INFY.NS",
+  "ICICIBANK.NS",
+  "HINDUNILVR.NS",
+  "SBIN.NS",
+  "BHARTIARTL.NS",
+  "ITC.NS",
+  "KOTAKBANK.NS",
+  "LT.NS",
+  "BAJFINANCE.NS",
+  "AXISBANK.NS",
+  "ASIANPAINT.NS",
+  "MARUTI.NS",
+  "WIPRO.NS",
+  "ADANIENT.NS",
+  "ULTRACEMCO.NS",
+  "NESTLEIND.NS",
+  "ONGC.NS",
+  "TITAN.NS",
+  "SUNPHARMA.NS",
+  "NTPC.NS",
+  "POWERGRID.NS",
+  "TATASTEEL.NS",
+  "JSWSTEEL.NS",
+  "M&M.NS",
+  "LTIM.NS",
+  "HCLTECH.NS",
+  "COALINDIA.NS",
+  "TATAMOTORS.NS",
+  "PIDILITIND.NS",
 ];
 
 const getRandomSubarray = (arr: string[], size: number) => {
@@ -130,7 +164,9 @@ const Games = () => {
 
   const predictions = useMarketChallengeStore((s) => s.predictions);
   const addPrediction = useMarketChallengeStore((s) => s.addPrediction);
-  const evaluatePredictions = useMarketChallengeStore((s) => s.evaluatePredictions);
+  const evaluatePredictions = useMarketChallengeStore(
+    (s) => s.evaluatePredictions
+  );
   const clearAllPredictions = useMarketChallengeStore((s) => s.clearAll);
 
   const events = useGamePointsStore((s) => s.events);
@@ -142,7 +178,9 @@ const Games = () => {
   const marketOpen = isNSEMarketOpen();
 
   // Points Progress
-  const [pointsHistory, setPointsHistory] = useState<{ date: string; points: number }[]>([]);
+  const [pointsHistory, setPointsHistory] = useState<
+    { date: string; points: number }[]
+  >([]);
   const [totalPointsHistory, setTotalPointsHistory] = useState(0);
   const [pointsLoading, setPointsLoading] = useState(false);
 
@@ -152,9 +190,9 @@ const Games = () => {
   useEffect(() => {
     // Pick 12 random stocks for this session
     const subset = getRandomSubarray(MASTER_STOCK_UNIVERSE, 12);
-    const mapped = subset.map(s => ({
+    const mapped = subset.map((s) => ({
       symbol: s.replace(".NS", ""),
-      name: s.replace(".NS", "") // Name will be updated by live price fetch if possible
+      name: s.replace(".NS", ""), // Name will be updated by live price fetch if possible
     }));
     setPredictionStocks(mapped);
 
@@ -186,7 +224,10 @@ const Games = () => {
         runningTotal += pts;
       });
 
-      const series = Object.entries(dailyMap).map(([date, points]) => ({ date, points }));
+      const series = Object.entries(dailyMap).map(([date, points]) => ({
+        date,
+        points,
+      }));
       setPointsHistory(series);
       setTotalPointsHistory(runningTotal);
     } catch (err) {
@@ -216,16 +257,23 @@ const Games = () => {
     if (!searchQuery) {
       setSearchResults([]);
       // Revert to random universe if search cleared
-      setSymbols(predictionStocks.map(s => s.symbol.includes(".NS") ? s.symbol : `${s.symbol}.NS`));
+      setSymbols(
+        predictionStocks.map((s) =>
+          s.symbol.includes(".NS") ? s.symbol : `${s.symbol}.NS`
+        )
+      );
       return;
     }
 
     setSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("search-assets", {
-          body: { query: searchQuery },
-        });
+        const { data, error } = await supabase.functions.invoke(
+          "search-assets",
+          {
+            body: { query: searchQuery },
+          }
+        );
         if (error) throw error;
         setSearchResults((data?.quotes || []) as SearchAssetResult[]);
 
@@ -267,29 +315,39 @@ const Games = () => {
     });
   }, [searchQuery, searchResults, predictionStocks]);
 
-  const getDayChangePercent = useCallback(async (symbol: string, dateISO: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("get-stock-data", {
-        body: { symbol: `${symbol}.NS`, days: 14 }
-      });
-      if (error || !data?.historicalData) return null;
-      const hist = (data.historicalData as any[])
-        .map((h) => ({
-          date: new Date(h.date).toISOString().slice(0, 10),
-          close: h.close as number,
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-      const idx = hist.findIndex((h) => h.date === dateISO);
-      if (idx <= 0) return null;
-      return ((hist[idx].close - hist[idx - 1].close) / hist[idx - 1].close) * 100;
-    } catch {
-      return null;
-    }
-  }, []);
+  const getDayChangePercent = useCallback(
+    async (symbol: string, dateISO: string) => {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "get-stock-data",
+          {
+            body: { symbol: `${symbol}.NS`, days: 14 },
+          }
+        );
+        if (error || !data?.historicalData) return null;
+        const hist = (data.historicalData as any[])
+          .map((h) => ({
+            date: new Date(h.date).toISOString().slice(0, 10),
+            close: h.close as number,
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        const idx = hist.findIndex((h) => h.date === dateISO);
+        if (idx <= 0) return null;
+        return (
+          ((hist[idx].close - hist[idx - 1].close) / hist[idx - 1].close) * 100
+        );
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
 
   const handleEvaluateNow = () => {
     if (marketOpen) {
-      toast.info("Evaluation is available only after market close (15:30 IST).");
+      toast.info(
+        "Evaluation is available only after market close (15:30 IST)."
+      );
       return;
     }
     evaluatePredictions(getDayChangePercent).then(() => {
@@ -297,19 +355,20 @@ const Games = () => {
     });
   };
 
-  const generateAndStartQuiz = async (category: "basics" | "technical" | "news") => {
+  const generateAndStartQuiz = async (
+    category: "basics" | "technical" | "news"
+  ) => {
     setIsGeneratingQuiz(true);
     let topic = "Stock Market Basics";
     if (category === "technical") topic = "Technical Analysis";
     if (category === "news") topic = "Market News and Current Events";
 
     try {
-
       // Use Python Backend for generation (Local "Online Mode")
-      const response = await fetch('/py-api/generate_quiz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, difficulty: "Medium" })
+      const response = await fetch("/py-api/generate_quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, difficulty: "Medium" }),
       });
 
       if (!response.ok) throw new Error("API call failed");
@@ -322,7 +381,7 @@ const Games = () => {
           description: "Freshly generated questions just for you.",
           points: 500,
           questions: data.questions,
-          totalQuestionsToAsk: 5
+          totalQuestionsToAsk: 5,
         };
         setSelectedQuiz(newQuiz);
         setIsQuizDialogOpen(true);
@@ -334,7 +393,8 @@ const Games = () => {
 
       // Fallback Logic
       let fallbackQuestions = FALLBACK_QUESTIONS_BASICS;
-      if (category === "technical") fallbackQuestions = FALLBACK_QUESTIONS_TECHNICAL;
+      if (category === "technical")
+        fallbackQuestions = FALLBACK_QUESTIONS_TECHNICAL;
       if (category === "news") fallbackQuestions = FALLBACK_QUESTIONS_NEWS;
 
       const newQuiz: Quiz = {
@@ -342,7 +402,7 @@ const Games = () => {
         title: `${topic} (Offline Mode)`,
         description: "Classic questions to test your knowledge.",
         points: 500,
-        questions: fallbackQuestions
+        questions: fallbackQuestions,
       };
 
       // Add a small delay to simulate loading
@@ -350,7 +410,6 @@ const Games = () => {
         setSelectedQuiz(newQuiz);
         setIsQuizDialogOpen(true);
       }, 500);
-
     } finally {
       setIsGeneratingQuiz(false);
     }
@@ -358,13 +417,22 @@ const Games = () => {
 
   const handleQuizComplete = async (score: number) => {
     if (!selectedQuiz || !user) return;
-    const totalQuestions = (selectedQuiz as any).totalQuestionsToAsk || selectedQuiz.questions.length;
-    const percentCorrect = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
-    const earnedPoints = Math.round((percentCorrect / 100) * selectedQuiz.points);
+    const totalQuestions =
+      (selectedQuiz as any).totalQuestionsToAsk ||
+      selectedQuiz.questions.length;
+    const percentCorrect =
+      totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+    const earnedPoints = Math.round(
+      (percentCorrect / 100) * selectedQuiz.points
+    );
 
     addToBalance(earnedPoints);
     try {
-      addGamePointEvent({ source: "quiz", label: selectedQuiz.title, points: earnedPoints });
+      addGamePointEvent({
+        source: "quiz",
+        label: selectedQuiz.title,
+        points: earnedPoints,
+      });
 
       // Store Daily Points in Supabase as a Transaction
       await supabase.from("transactions").insert({
@@ -373,21 +441,28 @@ const Games = () => {
         quantity: 1,
         price: earnedPoints,
         type: "REWARD",
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       } as any);
-
-    } catch (err) { console.error("Failed to log points", err); }
+    } catch (err) {
+      console.error("Failed to log points", err);
+    }
 
     toast.success(`Quiz Complete! You earned ${earnedPoints} points! 🏆`);
 
     // Save completion
     const today = new Date().toDateString();
-    localStorage.setItem(`quiz_completed_${selectedQuiz.id}_${today}_${user.id}`, "true");
+    localStorage.setItem(
+      `quiz_completed_${selectedQuiz.id}_${today}_${user.id}`,
+      "true"
+    );
 
     // Log progress
     try {
       const difficulty = "medium";
-      const activityScore = calculateQuizActivityScore(percentCorrect, difficulty);
+      const activityScore = calculateQuizActivityScore(
+        percentCorrect,
+        difficulty
+      );
       await logGameActivity({
         gameType: "quiz",
         gameId: selectedQuiz.id,
@@ -398,7 +473,9 @@ const Games = () => {
       });
       // Also refresh points graph
       await refreshPointsHistory();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
 
     setTimeout(() => {
       setIsQuizDialogOpen(false);
@@ -413,34 +490,57 @@ const Games = () => {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Your Predictions</CardTitle>
-          <CardDescription>Status and results for today & previous days</CardDescription>
+          <CardDescription>
+            Status and results for today & previous days
+          </CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleEvaluateNow} disabled={marketOpen}>
+          <Button
+            variant="outline"
+            onClick={handleEvaluateNow}
+            disabled={marketOpen}
+          >
             <RefreshCw className="h-4 w-4 mr-1" /> Evaluate
           </Button>
-          <Button variant="ghost" onClick={clearAllPredictions}>Clear</Button>
+          <Button variant="ghost" onClick={clearAllPredictions}>
+            Clear
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
         {predictions.length === 0 ? (
-          <div className="text-center text-gray-500 py-6">No predictions yet.</div>
+          <div className="text-center text-gray-500 py-6">
+            No predictions yet.
+          </div>
         ) : (
           <div className="space-y-2">
             {predictions.map((p) => {
               const isCorrect = p.correct;
               return (
-                <div key={p.id} className="p-2 border rounded flex items-center justify-between">
+                <div
+                  key={p.id}
+                  className="p-2 border rounded flex items-center justify-between"
+                >
                   <div className="flex items-center gap-3">
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">{p.dateISO}</span>
+                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                      {p.dateISO}
+                    </span>
                     <div className="font-medium">{p.symbol}</div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className={`font-semibold ${p.direction === "UP" ? "text-green-600" : "text-red-600"}`}>
+                    <div
+                      className={`font-semibold ${
+                        p.direction === "UP" ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
                       {p.direction}
                     </div>
                     {p.resolved ? (
-                      <div className={`text-sm ${isCorrect ? "text-green-700" : "text-orange-600"}`}>
+                      <div
+                        className={`text-sm ${
+                          isCorrect ? "text-green-700" : "text-orange-600"
+                        }`}
+                      >
                         {isCorrect ? "+500" : "-100"} pts
                       </div>
                     ) : (
@@ -456,7 +556,10 @@ const Games = () => {
     </Card>
   );
 
-  const PredictionPicker: React.FC<{ filteredStocks: any[]; prices: any }> = ({ filteredStocks, prices }) => {
+  const PredictionPicker: React.FC<{ filteredStocks: any[]; prices: any }> = ({
+    filteredStocks,
+    prices,
+  }) => {
     const todayISO = new Date().toISOString().slice(0, 10);
     return (
       <div className="grid md:grid-cols-2 gap-4">
@@ -464,35 +567,59 @@ const Games = () => {
           const live = prices[stock.symbol];
           const price = live ? live.price : 0;
           const already = predictions.some(
-            (p) => p.symbol === stock.symbol && p.dateISO === todayISO && !p.resolved
+            (p) =>
+              p.symbol === stock.symbol && p.dateISO === todayISO && !p.resolved
           );
           const place = (dir: PredictionDirection) => {
             if (!marketOpen) {
-              toast.info("Market is closed. Predictions allowed 09:15–15:30 IST (Mon–Fri)");
+              toast.info(
+                "Market is closed. Predictions allowed 09:15–15:30 IST (Mon–Fri)"
+              );
               return;
             }
             if (already) {
               toast.info(`Already predicted for ${stock.symbol} today.`);
               return;
             }
-            addPrediction({ symbol: stock.symbol, dateISO: todayISO, direction: dir });
+            addPrediction({
+              symbol: stock.symbol,
+              dateISO: todayISO,
+              direction: dir,
+            });
             toast.success(`Prediction placed: ${stock.symbol} ${dir}`);
           };
           return (
-            <div key={stock.symbol} className="p-3 border rounded flex items-center justify-between gap-3">
+            <div
+              key={stock.symbol}
+              className="p-3 border rounded flex items-center justify-between gap-3"
+            >
               <div>
                 <div className="font-semibold">{stock.symbol}</div>
-                <div className="text-sm text-gray-500">{live?.name || stock.name}</div>
+                <div className="text-sm text-gray-500">
+                  {live?.name || stock.name}
+                </div>
               </div>
               <div className="text-right">
-                <div className="font-medium">{price ? `₹${price.toFixed(2)}` : "—"}</div>
+                <div className="font-medium">
+                  {price ? `₹${price.toFixed(2)}` : "—"}
+                </div>
                 <div className="text-xs text-gray-500">Today</div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" className="bg-green-600 hover:bg-green-700" disabled={already || !marketOpen} onClick={() => place("UP")}>
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={already || !marketOpen}
+                  onClick={() => place("UP")}
+                >
                   <TrendingUp className="h-4 w-4 mr-1" /> Up
                 </Button>
-                <Button size="sm" variant="destructive" disabled={already || !marketOpen} onClick={() => place("DOWN")}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={already || !marketOpen}
+                  onClick={() => place("DOWN")}
+                >
                   <TrendingDown className="h-4 w-4 mr-1" /> Down
                 </Button>
               </div>
@@ -508,37 +635,77 @@ const Games = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
-      <motion.main variants={containerVariants} initial="hidden" animate="show" className="container mx-auto px-4 py-6">
+      <motion.main
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="container mx-auto px-4 py-6"
+      >
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Games & Quizzes</h1>
           <div className="bg-learngreen-100 px-4 py-2 rounded-lg flex items-center shadow-sm">
             <Trophy className="h-5 w-5 text-learngreen-600 mr-2" />
-            <span className="font-semibold text-learngreen-700">{todayPoints} Points Earned Today</span>
+            <span className="font-semibold text-learngreen-700">
+              {todayPoints} Points Earned Today
+            </span>
           </div>
         </div>
 
         {user && (
           <div className="mb-6">
-            <GamePointsChart data={pointsHistory} totalPoints={totalPointsHistory} loading={pointsLoading} />
+            <GamePointsChart
+              data={pointsHistory}
+              totalPoints={totalPointsHistory}
+              loading={pointsLoading}
+            />
           </div>
         )}
 
         {!marketOpen && (
           <div className="mb-4 text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded p-3">
-            Market Closed • Predictions and trades allowed 09:15–15:30 IST (Mon–Fri)
+            Market Closed • Predictions and trades allowed 09:15–15:30 IST
+            (Mon–Fri)
           </div>
         )}
 
         {/* Category Tabs */}
-        <motion.div variants={containerVariants} className="grid md:grid-cols-3 gap-6 mb-8">
+        <motion.div
+          variants={containerVariants}
+          className="grid md:grid-cols-3 gap-6 mb-8"
+        >
           {[
-            { id: "quizzes", title: "Knowledge Quizzes", icon: BookOpen, desc: "AI-Generated challenges." },
-            { id: "simulator", title: "Trading Simulator", icon: Brain, desc: "Practice with virtual money." },
-            { id: "challenges", title: "Market Challenges", icon: Timer, desc: "Timed prediction games." }
+            {
+              id: "quizzes",
+              title: "Knowledge Quizzes",
+              icon: BookOpen,
+              desc: "AI-Generated challenges.",
+            },
+            {
+              id: "simulator",
+              title: "Trading Simulator",
+              icon: Brain,
+              desc: "Practice with virtual money.",
+            },
+            {
+              id: "challenges",
+              title: "Market Challenges",
+              icon: Timer,
+              desc: "Timed prediction games.",
+            },
           ].map((cat) => (
-            <motion.div key={cat.id} variants={tabVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="h-full">
+            <motion.div
+              key={cat.id}
+              variants={tabVariants}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="h-full"
+            >
               <Card
-                className={`text-center transition-all cursor-pointer h-full ${activeCategory === cat.id ? "border-2 border-learngreen-500 shadow-lg" : "hover:shadow-md"}`}
+                className={`text-center transition-all cursor-pointer h-full ${
+                  activeCategory === cat.id
+                    ? "border-2 border-learngreen-500 shadow-lg"
+                    : "hover:shadow-md"
+                }`}
                 onClick={() => setActiveCategory(cat.id)}
               >
                 <CardHeader>
@@ -560,32 +727,57 @@ const Games = () => {
           <motion.div variants={tabVariants} initial="hidden" animate="show">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-semibold">Daily AI Quizzes</h2>
-              <Badge className="bg-purple-100 text-purple-700"><Sparkles className="w-3 h-3 mr-1" /> AI Powered</Badge>
+              <Badge className="bg-purple-100 text-purple-700">
+                <Sparkles className="w-3 h-3 mr-1" /> AI Powered
+              </Badge>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { id: "basics", title: "Market Basics", desc: "Fundamental concepts generated by AI.", points: 500 },
-                { id: "technical", title: "Technical Analysis", desc: "Charts & patterns generated by AI.", points: 750 },
-                { id: "news", title: "Market News", desc: "Daily financial news & events quiz.", points: 600 }
+                {
+                  id: "basics",
+                  title: "Market Basics",
+                  desc: "Fundamental concepts generated by AI.",
+                  points: 500,
+                },
+                {
+                  id: "technical",
+                  title: "Technical Analysis",
+                  desc: "Charts & patterns generated by AI.",
+                  points: 750,
+                },
+                {
+                  id: "news",
+                  title: "Market News",
+                  desc: "Daily financial news & events quiz.",
+                  points: 600,
+                },
               ].map((q) => {
                 const today = new Date().toDateString();
                 const completedKey = `quiz_completed_${q.id}_${today}_${user?.id}`;
-                const completedToday = localStorage.getItem(completedKey) === "true";
+                const completedToday =
+                  localStorage.getItem(completedKey) === "true";
 
                 return (
-                  <Card key={q.id} className={completedToday ? "bg-gray-100 opacity-80" : ""}>
+                  <Card
+                    key={q.id}
+                    className={completedToday ? "bg-gray-100 opacity-80" : ""}
+                  >
                     <CardHeader>
                       <div className="flex justify-between">
                         <CardTitle>{q.title}</CardTitle>
-                        {completedToday && <Badge variant="outline">Completed</Badge>}
+                        {completedToday && (
+                          <Badge variant="outline">Completed</Badge>
+                        )}
                       </div>
                       <CardDescription>{q.desc}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="flex justify-between text-sm">
                         <span>5 Questions</span>
-                        <span className="font-semibold text-learngreen-700">{q.points} pts</span>
+                        <span className="font-semibold text-learngreen-700">
+                          {q.points} pts
+                        </span>
                       </div>
                     </CardContent>
                     <CardFooter>
@@ -594,8 +786,14 @@ const Games = () => {
                         disabled={completedToday || isGeneratingQuiz}
                         onClick={() => generateAndStartQuiz(q.id as any)}
                       >
-                        {isGeneratingQuiz ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        {isGeneratingQuiz ? "Generating..." : (completedToday ? "Check back tomorrow" : "Start Quiz")}
+                        {isGeneratingQuiz ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : null}
+                        {isGeneratingQuiz
+                          ? "Generating..."
+                          : completedToday
+                          ? "Check back tomorrow"
+                          : "Start Quiz"}
                       </Button>
                     </CardFooter>
                   </Card>
@@ -607,11 +805,18 @@ const Games = () => {
 
         {/* SIMULATOR TAB */}
         {activeCategory === "simulator" && (
-          <motion.div variants={tabVariants} initial="hidden" animate="show" className="space-y-6">
+          <motion.div
+            variants={tabVariants}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+          >
             <Card>
               <CardHeader>
                 <CardTitle>Trading Simulator</CardTitle>
-                <CardDescription>Search stocks and buy with your virtual balance.</CardDescription>
+                <CardDescription>
+                  Search stocks and buy with your virtual balance.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
@@ -637,7 +842,16 @@ const Games = () => {
                       sector: "",
                     } as any;
                     return (
-                      <motion.div key={stock.symbol} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setSelectedStock(display); setTradeAction("buy"); setIsTradeDialogOpen(true); }}>
+                      <motion.div
+                        key={stock.symbol}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setSelectedStock(display);
+                          setTradeAction("buy");
+                          setIsTradeDialogOpen(true);
+                        }}
+                      >
                         <StockCard stock={display} />
                       </motion.div>
                     );
@@ -647,22 +861,45 @@ const Games = () => {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Recent Trades</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Recent Trades</CardTitle>
+              </CardHeader>
               <CardContent>
-                {trades.length === 0 ? <div className="text-center text-gray-500 py-8">No trades yet.</div> : (
+                {trades.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    No trades yet.
+                  </div>
+                ) : (
                   <div className="space-y-3">
-                    {trades.map((t) => (
-                      <div key={t.id} className="flex justify-between items-center p-2 border rounded">
-                        <div>
-                          <div className="font-medium">{t.symbol} • {t.type}</div>
-                          <div className="text-sm text-gray-500">{new Date(t.date).toLocaleString()}</div>
+                    {trades.filter(Boolean).map((t) => {
+                      const safeQty =
+                        typeof (t as any).quantity === "number"
+                          ? (t as any).quantity
+                          : Number((t as any).quantity ?? 0);
+                      const safePrice =
+                        typeof (t as any).price === "number"
+                          ? (t as any).price
+                          : Number((t as any).price ?? 0);
+                      return (
+                        <div
+                          key={t.id}
+                          className="flex justify-between items-center p-2 border rounded"
+                        >
+                          <div>
+                            <div className="font-medium">
+                              {t.symbol} • {t.type}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(t.date).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div>Qty: {safeQty}</div>
+                            <div>₹{safePrice.toFixed(2)}</div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div>Qty: {t.quantity}</div>
-                          <div>₹{t.price.toFixed(2)}</div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -679,14 +916,20 @@ const Games = () => {
                   (async () => {
                     const symbolWithNs = `${selectedStock.symbol}.NS`;
                     const fetched = await fetchPrices([symbolWithNs]);
-                    const live = fetched[selectedStock.symbol] || prices[selectedStock.symbol];
+                    const live =
+                      fetched[selectedStock.symbol] ||
+                      prices[selectedStock.symbol];
                     const priceToUse = live ? live.price : selectedStock.price;
                     const ok = buyStock(selectedStock, qty, priceToUse);
                     if (ok) {
-                      toast.success(`Bought ${qty} ${selectedStock.symbol} @ ₹${priceToUse.toFixed(2)}`);
+                      toast.success(
+                        `Bought ${qty} ${
+                          selectedStock.symbol
+                        } @ ₹${priceToUse.toFixed(2)}`
+                      );
                       try {
                         usePortfolioStore.getState().addHistoryPoint(0); // Trigger history update logic roughly
-                      } catch { }
+                      } catch {}
                     } else toast.error("Insufficient balance");
                   })();
                 }
@@ -698,11 +941,19 @@ const Games = () => {
 
         {/* CHALLENGES TAB */}
         {activeCategory === "challenges" && (
-          <motion.div variants={tabVariants} initial="hidden" animate="show" className="space-y-6">
+          <motion.div
+            variants={tabVariants}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+          >
             <Card>
               <CardHeader>
                 <CardTitle>Daily Direction Prediction</CardTitle>
-                <CardDescription>Predict if a stock will close UP or DOWN today. Correct: +500 • Wrong: -100</CardDescription>
+                <CardDescription>
+                  Predict if a stock will close UP or DOWN today. Correct: +500
+                  • Wrong: -100
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
@@ -713,7 +964,10 @@ const Games = () => {
                     value={searchQuery}
                   />
                 </div>
-                <PredictionPicker filteredStocks={filteredStocks} prices={prices} />
+                <PredictionPicker
+                  filteredStocks={filteredStocks}
+                  prices={prices}
+                />
               </CardContent>
             </Card>
             <PredictionsList prices={prices} />
