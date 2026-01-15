@@ -36,7 +36,7 @@ export function PortfolioChart({
   height = 200,
 }: PortfolioChartProps) {
   const isPositive = change >= 0;
-  
+
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-2">

@@ -237,7 +237,35 @@ export const usePortfolioStore = create<PortfolioState>()(
             };
           });
 
-          set((state) => ({ ...state, holdings: mappedHoldings }));
+          // Fetch transactions history
+          const { data: txData, error: txError } = await supabase
+            .from("transactions")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+          if (txError) {
+            console.error("Failed to load transactions", txError);
+          }
+
+          let mappedTrades: any[] = [];
+          if (txData) {
+            mappedTrades = txData.map((tx: any) => {
+              const meta = mockStocks.find((m) => m.symbol === tx.stock_symbol);
+              return {
+                id: tx.id,
+                stockId: meta?.id ?? tx.stock_symbol,
+                symbol: tx.stock_symbol,
+                quantity: tx.quantity,
+                price: tx.price,
+                type: tx.type,
+                date: tx.created_at
+              };
+            });
+          }
+
+          set((state) => ({ ...state, holdings: mappedHoldings, trades: mappedTrades }));
         } catch (err) {
           console.error("Error syncing holdings from Supabase", err);
         }

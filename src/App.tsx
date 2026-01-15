@@ -15,6 +15,7 @@ import Search from "./pages/Search";
 import Games from "./pages/Games";
 import Predictions from "./pages/Predictions";
 import PSG from "./pages/PSG";
+import PersonalSuggestions from "./pages/PersonalSuggestions";
 import More from "./pages/More";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -135,6 +136,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <PSG />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/suggestions"
+              element={
+                <ProtectedRoute>
+                  <PersonalSuggestions />
                 </ProtectedRoute>
               }
             />
