@@ -1,10 +1,21 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
 app = FastAPI(title="Portfolio Intelligence API")
+
+# Allow browser calls from your frontend (Vercel). For quick testing we
+# allow all origins; you can restrict this to your exact frontend URL.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or ["https://your-frontend-url.vercel.app"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class AnalysisResult(BaseModel):

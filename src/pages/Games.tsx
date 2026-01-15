@@ -364,15 +364,35 @@ const Games = () => {
     if (category === "news") topic = "Market News and Current Events";
 
     try {
-      // Use Python Backend for generation (Local "Online Mode")
-      const response = await fetch("/py-api/generate_quiz", {
+      // Use Python Backend for generation.
+      // Dev: Vite proxy at /py-api; Prod: VITE_PY_API_BASE_URL.
+      const pyBase =
+        (import.meta as any).env?.VITE_PY_API_BASE_URL || "/py-api";
+      const quizUrl = `${pyBase.replace(/\/$/, "")}/generate_quiz`;
+
+      const response = await fetch(quizUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, difficulty: "Medium" }),
       });
 
-      if (!response.ok) throw new Error("API call failed");
-      const data = await response.json();
+      const text = await response.text();
+      let data: any = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // non-JSON response (e.g. HTML error page)
+        }
+      }
+
+      if (!response.ok || !data) {
+        const msg =
+          (data && (data.detail || data.message)) ||
+          text ||
+          `HTTP ${response.status}`;
+        throw new Error(msg);
+      }
 
       if (data && data.questions) {
         const newQuiz: Quiz = {
