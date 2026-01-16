@@ -184,7 +184,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <NavigationBar />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="container mx-auto px-4 py-8 max-w-2xl"> {/* Narrowed container */}
         <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
@@ -290,14 +290,14 @@ const Profile = () => {
           <Card>
             <CardHeader><CardTitle>Account Stats</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                <span className="text-gray-600">Trading Level</span><span className="font-semibold">Level {tradingLevel}</span>
+              <div className="flex justify-between px-2 py-1 bg-muted rounded">
+                <span className="text-muted-foreground">Trading Level</span><span className="font-semibold">Level {tradingLevel}</span>
               </div>
               <div className="flex justify-between px-2 py-1">
-                <span className="text-gray-600">Quizzes</span><span className="font-semibold">{quizCount} Passed</span>
+                <span className="text-muted-foreground">Quizzes</span><span className="font-semibold">{quizCount} Passed</span>
               </div>
-              <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                <span className="text-gray-600">Total Return</span>
+              <div className="flex justify-between px-2 py-1 bg-muted rounded">
+                <span className="text-muted-foreground">Total Return</span>
                 <span className={`font-semibold ${portfolioReturn >= 0 ? "text-green-600" : "text-red-500"}`}>
                   {portfolioReturn > 0 ? "+" : ""}{portfolioReturn.toFixed(2)}%
                 </span>

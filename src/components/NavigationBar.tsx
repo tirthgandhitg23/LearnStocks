@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { ModeToggle } from "@/components/mode-toggle";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BarChart, BookOpen, ChevronDown, GamepadIcon, Home, PieChart, Search, Settings, Sparkles, TrendingUp, User } from "lucide-react";
@@ -31,7 +32,7 @@ const NavigationBar = () => {
   ];
 
   return (
-    <nav className="bg-white border-b border-learngreen-200 px-4 py-2.5">
+    <nav className="bg-background border-b border-learngreen-200 dark:border-border px-4 py-2.5">
       <div className="flex flex-wrap justify-between items-center">
         <div className="flex items-center">
           <MainMenu />
@@ -77,13 +78,14 @@ const NavigationBar = () => {
           </ul>
         </div>
 
-        <div className="hidden md:flex items-center">
+        <div className="hidden md:flex items-center gap-2">
           <Link to="/profile">
             <Button variant="ghost" size="sm" className="text-learngreen-500">
               <User className="h-4 w-4 mr-2" />
               Profile
             </Button>
           </Link>
+          <ModeToggle />
         </div>
       </div>
     </nav>

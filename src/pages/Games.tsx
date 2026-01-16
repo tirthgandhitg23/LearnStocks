@@ -204,7 +204,7 @@ const Games = () => {
   const refreshPointsHistory = useCallback(async () => {
     if (!user) return;
     setPointsLoading(true);
-    
+
     try {
       // Query the Flattened View directly
       const { data, error } = await (supabase as any)
@@ -674,7 +674,7 @@ const Games = () => {
   // -- RENDER --
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <NavigationBar />
       <motion.main
         variants={containerVariants}
@@ -1015,7 +1015,7 @@ const Games = () => {
       </motion.main>
 
       <Dialog open={isQuizDialogOpen} onOpenChange={setIsQuizDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col bg-white">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col bg-card">
           <DialogHeader className="p-6 pb-4 border-b">
             <DialogTitle>{selectedQuiz?.title}</DialogTitle>
           </DialogHeader>

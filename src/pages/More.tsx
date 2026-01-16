@@ -16,12 +16,10 @@ import {
   Shield,
   Bell,
   ChevronRight,
-  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import NavigationBar from "@/components/NavigationBar";
 import ResourceSection from "@/components/ResourceSection";
-import { toast } from "sonner";
 
 const More = () => {
   const { user, signOut } = useAuth();
@@ -176,27 +174,7 @@ const More = () => {
               <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">42% Complete</span>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-gray-500 border-dashed"
-              onClick={async () => {
-                const { seedUserHistory } = await import("@/utils/seedHistory");
-                const loadingToast = toast.loading("Generating history...");
-                const res = await seedUserHistory();
-                toast.dismiss(loadingToast);
-                if (res.success) {
-                  toast.success("History simulation complete! Check Games tab.");
-                  // Force data refresh might be needed, but page reload works
-                  setTimeout(() => window.location.reload(), 1500);
-                } else {
-                  toast.info(res.message);
-                }
-              }}
-            >
-              <Sparkles className="w-3 h-3 mr-2" />
-              Simulate Past Activity
-            </Button>
+            {/* Button removed to fix build error (missing seedHistory) */}
           </CardContent>
         </Card>
 
