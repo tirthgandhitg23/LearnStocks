@@ -75,7 +75,7 @@ export const useMarketChallengeStore = create<MarketChallengeState>()(
               points: award,
               dateISO: todayISO,
             });
-          } catch {}
+          } catch { }
           // optionally update remote points if profile exists
           try {
             const user = (await supabase.auth.getUser()).data.user;
@@ -98,8 +98,8 @@ export const useMarketChallengeStore = create<MarketChallengeState>()(
               Math.abs(pct) < 2
                 ? "easy"
                 : Math.abs(pct) < 5
-                ? "medium"
-                : "hard";
+                  ? "medium"
+                  : "hard";
 
             await logGameActivity({
               gameType: "market_challenge",

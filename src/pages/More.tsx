@@ -5,35 +5,37 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { 
-  LogOut, 
-  UserCircle, 
-  Settings, 
-  HelpCircle, 
-  Info, 
-  CreditCard, 
-  Heart, 
-  Shield, 
-  Bell, 
+import {
+  LogOut,
+  UserCircle,
+  Settings,
+  HelpCircle,
+  Info,
+  CreditCard,
+  Heart,
+  Shield,
+  Bell,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import NavigationBar from "@/components/NavigationBar";
 import ResourceSection from "@/components/ResourceSection";
+import { toast } from "sonner";
 
 const More = () => {
   const { user, signOut } = useAuth();
-  
+
   const handleSignOut = async () => {
     await signOut();
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavigationBar />
       <div className="container mx-auto px-4 py-8 max-w-md">
         <h1 className="text-2xl font-bold mb-6">Profile & Settings</h1>
-        
+
         {/* User Profile Card */}
         <Card className="mb-8">
           <CardContent className="pt-6">
@@ -56,7 +58,7 @@ const More = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Portfolio Diversification Section (External Resources) */}
         <ResourceSection
           title="Portfolio Diversification"
@@ -79,7 +81,7 @@ const More = () => {
             ]}
           />
         </div>
-        
+
         {/* Account Settings */}
         <h2 className="text-lg font-semibold mb-3">Account Settings</h2>
         <Card className="mb-8">
@@ -92,7 +94,7 @@ const More = () => {
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
               </Link>
-              
+
               <Link to="/settings/account" className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex items-center">
                   <Settings className="h-5 w-5 mr-3 text-learngreen-600" />
@@ -100,7 +102,7 @@ const More = () => {
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
               </Link>
-              
+
               <Link to="/settings/notifications" className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex items-center">
                   <Bell className="h-5 w-5 mr-3 text-learngreen-600" />
@@ -108,7 +110,7 @@ const More = () => {
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
               </Link>
-              
+
               <Link to="/settings/privacy" className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex items-center">
                   <Shield className="h-5 w-5 mr-3 text-learngreen-600" />
@@ -119,7 +121,7 @@ const More = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* App Information */}
         <h2 className="text-lg font-semibold mb-3">App Information</h2>
         <Card className="mb-8">
@@ -132,7 +134,7 @@ const More = () => {
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
               </Link>
-              
+
               <Link to="/about" className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex items-center">
                   <Info className="h-5 w-5 mr-3 text-learngreen-600" />
@@ -140,7 +142,7 @@ const More = () => {
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
               </Link>
-              
+
               <Link to="/terms" className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex items-center">
                   <CreditCard className="h-5 w-5 mr-3 text-learngreen-600" />
@@ -148,7 +150,7 @@ const More = () => {
                 </div>
                 <ChevronRight size={18} className="text-gray-400" />
               </Link>
-              
+
               <Link to="/feedback" className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex items-center">
                   <Heart className="h-5 w-5 mr-3 text-learngreen-600" />
@@ -159,7 +161,7 @@ const More = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Achievements Section */}
         <h2 className="text-lg font-semibold mb-3">Your Achievements</h2>
         <Card className="mb-8">
@@ -168,24 +170,46 @@ const More = () => {
               <span className="font-medium">Trading Level</span>
               <span className="px-2 py-1 bg-learngreen-100 text-learngreen-700 rounded-full text-sm">Level 3</span>
             </div>
-            
-            <div className="flex items-center justify-between">
+
+            <div className="flex items-center justify-between mb-6">
               <span className="font-medium">Learning Progress</span>
               <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">42% Complete</span>
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-gray-500 border-dashed"
+              onClick={async () => {
+                const { seedUserHistory } = await import("@/utils/seedHistory");
+                const loadingToast = toast.loading("Generating history...");
+                const res = await seedUserHistory();
+                toast.dismiss(loadingToast);
+                if (res.success) {
+                  toast.success("History simulation complete! Check Games tab.");
+                  // Force data refresh might be needed, but page reload works
+                  setTimeout(() => window.location.reload(), 1500);
+                } else {
+                  toast.info(res.message);
+                }
+              }}
+            >
+              <Sparkles className="w-3 h-3 mr-2" />
+              Simulate Past Activity
+            </Button>
           </CardContent>
         </Card>
-        
+
         {/* Sign Out Button */}
-        <Button 
-          variant="destructive" 
-          className="w-full mb-8" 
+        <Button
+          variant="destructive"
+          className="w-full mb-8"
           onClick={handleSignOut}
         >
           <LogOut className="mr-2 h-4 w-4" />
           Sign Out
         </Button>
-        
+
         {/* App version */}
         <p className="text-center text-gray-500 text-sm">
           LearnStocks v1.0.0

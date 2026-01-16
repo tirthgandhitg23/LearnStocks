@@ -22,6 +22,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { CheckIcon, PlusCircle } from "lucide-react";
 import { StockSuggestion, UserProfile } from "@/types";
+import { usePortfolioStore } from "@/stores/portfolioStore";
+import mockStocks from "@/data/mockStocks";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -39,6 +41,30 @@ const Profile = () => {
   const [sectors, setSelectedSectors] = useState<string[]>([]);
   const [availableSectors, setAvailableSectors] = useState<{ id: string, name: string }[]>([]);
   const [showSectorSelector, setShowSectorSelector] = useState(false);
+
+  // Dynamic Stats
+  const [quizCount, setQuizCount] = useState(0);
+  const [tradingLevel, setTradingLevel] = useState(1);
+  const [portfolioReturn, setPortfolioReturn] = useState(0);
+  const { holdings } = usePortfolioStore();
+
+  useEffect(() => {
+    // Calculate Portfolio Return
+    if (holdings.length > 0) {
+      let totalCost = 0;
+      let totalValue = 0;
+      holdings.forEach(h => {
+        const stock = mockStocks.find(s => s.id === h.stockId || s.symbol === h.stockId);
+        const currentPrice = stock ? stock.price : h.avgBuyPrice;
+        totalCost += h.quantity * h.avgBuyPrice;
+        totalValue += h.quantity * currentPrice;
+      });
+      const ret = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
+      setPortfolioReturn(ret);
+    } else {
+      setPortfolioReturn(0);
+    }
+  }, [holdings]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -78,6 +104,25 @@ const Profile = () => {
 
         const { data: sectorsData } = await supabase.from('sectors').select('id, name').order('name');
         if (sectorsData) setAvailableSectors(sectorsData);
+
+        // 4. Dynamic Stats: Level & Quizzes
+        // Calculate Level from Account Age
+        const createdAt = new Date(user.created_at || Date.now());
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - createdAt.getTime());
+        const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+        setTradingLevel(Math.max(1, diffMonths));
+
+        // Fetch Quiz Count
+        const { count: qCount } = await supabase
+          .from('user_game_activity')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('game_type', 'quiz')
+          .eq('outcome', 'completed');
+
+        setQuizCount(qCount || 0);
+
 
       } catch (error) {
         console.error("Failed to load profile data:", error);
@@ -246,13 +291,16 @@ const Profile = () => {
             <CardHeader><CardTitle>Account Stats</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                <span className="text-gray-600">Trading Level</span><span className="font-semibold">Level 3</span>
+                <span className="text-gray-600">Trading Level</span><span className="font-semibold">Level {tradingLevel}</span>
               </div>
               <div className="flex justify-between px-2 py-1">
-                <span className="text-gray-600">Quizzes</span><span className="font-semibold">5 Passed</span>
+                <span className="text-gray-600">Quizzes</span><span className="font-semibold">{quizCount} Passed</span>
               </div>
               <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                <span className="text-gray-600">Total Return</span><span className="font-semibold text-green-600">+8.75%</span>
+                <span className="text-gray-600">Total Return</span>
+                <span className={`font-semibold ${portfolioReturn >= 0 ? "text-green-600" : "text-red-500"}`}>
+                  {portfolioReturn > 0 ? "+" : ""}{portfolioReturn.toFixed(2)}%
+                </span>
               </div>
             </CardContent>
           </Card>

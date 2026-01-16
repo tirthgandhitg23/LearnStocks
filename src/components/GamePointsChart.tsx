@@ -27,12 +27,9 @@ const GamePointsChart: React.FC<GamePointsChartProps> = ({
     loading,
     className,
 }) => {
-    const hasData = data && data.length > 0;
-
     const chartData = React.useMemo(() => {
-        // Determine cumulative points over time
-        // Data is expected to be { date: 'YYYY-MM-DD', points: number (daily total) }
-        // We sort by date and compute running total
+        if (!data || data.length === 0) return [];
+        // Sort by date just in case
         const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
 
         let runningTotal = 0;
@@ -67,60 +64,52 @@ const GamePointsChart: React.FC<GamePointsChartProps> = ({
                 </div>
             </CardHeader>
             <CardContent className="pt-0">
-                {loading ? (
-                    <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-                        Loading points history...
-                    </div>
-                ) : !hasData ? (
-                    <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-                        No points earned yet. Play games to start your progression!
-                    </div>
-                ) : (
-                    <ChartContainer config={chartConfig} className="w-full h-64">
-                        <AreaChart
-                            data={chartData}
-                            margin={{ top: 16, right: 16, bottom: 8, left: 0 }}
-                        >
-                            <defs>
-                                <linearGradient id="fillPoints" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(142.1 76.2% 36.3%)" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="hsl(142.1 76.2% 36.3%)" stopOpacity={0.1} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis
-                                dataKey="dateLabel"
-                                tickLine={false}
-                                axisLine={false}
-                                tickMargin={8}
-                            />
-                            <YAxis
-                                tickLine={false}
-                                axisLine={false}
-                                tickMargin={8}
-                            />
-                            <ChartTooltip
-                                cursor={{ strokeDasharray: "3 3" }}
-                                content={
-                                    <ChartTooltipContent
-                                        labelFormatter={(value) => (
-                                            <span className="font-medium">{value}</span>
-                                        )}
-                                    />
-                                }
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="cumulativePoints"
-                                stroke="hsl(142.1 76.2% 36.3%)"
-                                fill="url(#fillPoints)"
-                                strokeWidth={2}
-                                dot={{ r: 3 }}
-                                activeDot={{ r: 4 }}
-                            />
-                        </AreaChart>
-                    </ChartContainer>
-                )}
+                <ChartContainer config={chartConfig} className="w-full h-64">
+                    <AreaChart
+                        data={chartData}
+                        margin={{ top: 16, right: 16, bottom: 8, left: 0 }}
+                    >
+                        <defs>
+                            <linearGradient id="fillPoints" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(142.1 76.2% 36.3%)" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="hsl(142.1 76.2% 36.3%)" stopOpacity={0.1} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                            dataKey="dateLabel"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            interval="preserveStartEnd"
+                            minTickGap={30}
+                        />
+                        <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                        />
+                        <ChartTooltip
+                            cursor={{ strokeDasharray: "3 3" }}
+                            content={
+                                <ChartTooltipContent
+                                    labelFormatter={(value) => (
+                                        <span className="font-medium">{value}</span>
+                                    )}
+                                />
+                            }
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="cumulativePoints"
+                            stroke="hsl(142.1 76.2% 36.3%)"
+                            fill="url(#fillPoints)"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            activeDot={{ r: 4 }}
+                        />
+                    </AreaChart>
+                </ChartContainer>
             </CardContent>
         </Card>
     );
