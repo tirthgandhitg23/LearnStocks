@@ -1,21 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
 app = FastAPI(title="Portfolio Intelligence API")
-
-# Allow browser calls from your frontend (Vercel). For quick testing we
-# allow all origins; you can restrict this to your exact frontend URL.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # or ["https://your-frontend-url.vercel.app"]
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 class AnalysisResult(BaseModel):
@@ -236,7 +226,7 @@ def generate_suggestions(df: pd.DataFrame) -> Dict[str, List[Dict[str, Any]]]:
     return suggestions
 
 
-@app.post("/analyze")
+@app.post("/analyze", response_model=AnalysisResult)
 async def analyze_portfolio(file: UploadFile = File(...)):
     """Accept a CSV file and return portfolio analytics as JSON.
 
@@ -258,7 +248,7 @@ async def analyze_portfolio(file: UploadFile = File(...)):
         "suggestions": suggestions
     }
 
-    return response
+    return JSONResponse(content=response)
 
 
 @app.get("/")

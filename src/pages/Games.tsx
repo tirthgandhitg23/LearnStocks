@@ -200,38 +200,57 @@ const Games = () => {
     setSymbols(subset);
   }, [setSymbols]);
 
-  // 2. Fetch Points History (Rewards)
+  // 2. Fetch Points History (via View)
   const refreshPointsHistory = useCallback(async () => {
     if (!user) return;
     setPointsLoading(true);
+    
     try {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("created_at, price")
+      // Query the Flattened View directly
+      const { data, error } = await (supabase as any)
+        .from("user_daily_progress_view")
+        .select("day, score")
         .eq("user_id", user.id)
-        .eq("type", "REWARD")
-        .order("created_at", { ascending: true });
+        .order("day", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("View Error:", error);
+        // If the view is missing (42P01), notify user
+        if (error.code === '42P01') {
+          toast.error("Missing View: Please run the SQL to create 'user_daily_progress_view'");
+        } else {
+          toast.error("Failed to load history: " + error.message);
+        }
+        throw error;
+      }
 
-      // Aggregate by day
-      const dailyMap: Record<string, number> = {};
-      let runningTotal = 0;
-      data.forEach((tx) => {
-        const date = new Date(tx.created_at).toISOString().slice(0, 10);
-        const pts = Number(tx.price); // Price in REWARD tx is points
-        dailyMap[date] = (dailyMap[date] || 0) + pts;
-        runningTotal += pts;
+      if (!data || data.length === 0) {
+        setPointsHistory([]);
+        setTotalPointsHistory(0);
+        return;
+      }
+
+      // Processing: The view returns Daily Cumulative Scores (score).
+      // The Chart expects Daily Points Earned (delta).
+      // We calculate delta = current - previous.
+      const series: { date: string; points: number }[] = [];
+      let previousScore = 0;
+
+      data.forEach((row: any) => {
+        const currentTotal = Number(row.score);
+        const delta = currentTotal - previousScore;
+        series.push({
+          date: row.day, // View returns 'day' column
+          points: delta
+        });
+        previousScore = currentTotal;
       });
 
-      const series = Object.entries(dailyMap).map(([date, points]) => ({
-        date,
-        points,
-      }));
       setPointsHistory(series);
-      setTotalPointsHistory(runningTotal);
+      setTotalPointsHistory(previousScore);
+
     } catch (err) {
-      console.error("Failed to fetch points history", err);
+      console.error("History fetch failed:", err);
     } finally {
       setPointsLoading(false);
     }
@@ -397,7 +416,7 @@ const Games = () => {
       if (data && data.questions) {
         const newQuiz: Quiz = {
           id: category,
-          title: `${topic} (AI Generated)`,
+          title: `${topic}`,
           description: "Freshly generated questions just for you.",
           points: 500,
           questions: data.questions,
@@ -553,17 +572,15 @@ const Games = () => {
                   </div>
                   <div className="flex items-center gap-4">
                     <div
-                      className={`font-semibold ${
-                        p.direction === "UP" ? "text-green-600" : "text-red-600"
-                      }`}
+                      className={`font-semibold ${p.direction === "UP" ? "text-green-600" : "text-red-600"
+                        }`}
                     >
                       {p.direction}
                     </div>
                     {p.resolved ? (
                       <div
-                        className={`text-sm ${
-                          isCorrect ? "text-green-700" : "text-orange-600"
-                        }`}
+                        className={`text-sm ${isCorrect ? "text-green-700" : "text-orange-600"
+                          }`}
                       >
                         {isCorrect ? "+500" : "-100"} pts
                       </div>
@@ -725,11 +742,10 @@ const Games = () => {
               className="h-full"
             >
               <Card
-                className={`text-center transition-all cursor-pointer h-full ${
-                  activeCategory === cat.id
-                    ? "border-2 border-learngreen-500 shadow-lg"
-                    : "hover:shadow-md"
-                }`}
+                className={`text-center transition-all cursor-pointer h-full ${activeCategory === cat.id
+                  ? "border-2 border-learngreen-500 shadow-lg"
+                  : "hover:shadow-md"
+                  }`}
                 onClick={() => setActiveCategory(cat.id)}
               >
                 <CardHeader>
@@ -816,8 +832,8 @@ const Games = () => {
                         {isGeneratingQuiz
                           ? "Generating..."
                           : completedToday
-                          ? "Check back tomorrow"
-                          : "Start Quiz"}
+                            ? "Check back tomorrow"
+                            : "Start Quiz"}
                       </Button>
                     </CardFooter>
                   </Card>
@@ -947,13 +963,12 @@ const Games = () => {
                     const ok = buyStock(selectedStock, qty, priceToUse);
                     if (ok) {
                       toast.success(
-                        `Bought ${qty} ${
-                          selectedStock.symbol
+                        `Bought ${qty} ${selectedStock.symbol
                         } @ ₹${priceToUse.toFixed(2)}`
                       );
                       try {
                         usePortfolioStore.getState().addHistoryPoint(0); // Trigger history update logic roughly
-                      } catch {}
+                      } catch { }
                     } else toast.error("Insufficient balance");
                   })();
                 }
