@@ -19,7 +19,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchStockData, searchAssets } from "@/services/stockApi";
 import { toast } from "sonner";
 
 // NEW: A predefined list of popular Indian assets to show on page load
@@ -67,9 +67,7 @@ const Search = () => {
       setIsLoadingPopular(true);
       try {
         const promises = POPULAR_ASSETS.map((symbol) =>
-          supabase.functions.invoke("get-stock-data", {
-            body: { symbol },
-          }),
+          fetchStockData(symbol),
         );
 
         const responses = await Promise.all(promises);
@@ -77,14 +75,11 @@ const Search = () => {
         const fetchedAssets = responses
           .filter(({ data, error }) => !error && data?.currentPrice)
           .map(({ data }) => {
-            const cp = data.currentPrice;
-            // Prefer a real-time price; otherwise fall back to previousClose.
+            const cp = data!.currentPrice;
             const rawPrice: number =
               (typeof cp.price === "number" ? cp.price : null) ??
               (typeof cp.previousClose === "number" ? cp.previousClose : 0);
 
-            // If we still don't have a sane price, skip this asset rather
-            // than showing ₹0.00 which confuses the user.
             if (!rawPrice || !Number.isFinite(rawPrice) || rawPrice <= 0) {
               return null;
             }
@@ -96,15 +91,14 @@ const Search = () => {
                   ? (cp.diff / cp.previousClose) * 100
                   : 0;
             return {
-              symbol: data.symbol,
-              name: cp.longName || cp.shortName || data.symbol,
+              symbol: data!.symbol,
+              name: cp.longName || cp.shortName || data!.symbol,
               price: rawPrice,
               change: cp.diff || 0,
               changePercent: typeof pct === "number" ? pct : 0,
             };
           });
 
-        // Filter out any nulls from the skip-logic above
         setPopularAssets(fetchedAssets.filter(Boolean) as PopularAssetData[]);
       } catch (error) {
         console.error("Failed to fetch popular assets", error);
@@ -136,28 +130,19 @@ const Search = () => {
   // Main search function
   const performSearch = async (query: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("search-assets", {
-        body: { query },
-      });
-      if (error) {
-        const status = (error as any)?.context?.status;
-        const message =
-          status === 429
-            ? "Search is temporarily rate-limited by the data provider. Please try again in a minute."
-            : (error as any)?.message || "Search failed. Please try again.";
+      const searchData = await searchAssets(query);
+      if (searchData.error) {
+        const message = searchData.error.includes("429")
+          ? "Search is temporarily rate-limited by the data provider. Please try again in a minute."
+          : searchData.error || "Search failed. Please try again.";
         toast.error("Search failed", { description: message });
         setResults([]);
         return;
       }
-      setResults((data as any)?.quotes || []);
+      setResults((searchData as any)?.quotes || []);
     } catch (error: any) {
       console.error("Error searching assets:", error);
-      const status = error?.context?.status;
-      const message =
-        status === 429
-          ? "Search is temporarily rate-limited by the data provider. Please try again in a minute."
-          : error?.message || "Search failed. Please try again.";
-      toast.error("Search failed", { description: message });
+      toast.error("Search failed", { description: error?.message || "Please try again." });
       setResults([]);
     } finally {
       setIsLoading(false);

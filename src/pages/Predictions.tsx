@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import NavigationBar from "@/components/NavigationBar";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchStockData, searchAssets } from "@/services/stockApi";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,10 +61,7 @@ const Predictions = () => {
       setLoading(true);
       try {
         const promises = symbols.map((symbol) =>
-          supabase.functions
-            .invoke("get-stock-data", {
-              body: { symbol },
-            })
+          fetchStockData(symbol)
             .then(({ data, error }) => {
               if (error || !data?.currentPrice) {
                 console.error(`Error for ${symbol}:`, error);
@@ -111,22 +108,15 @@ const Predictions = () => {
     setSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "search-assets",
-          {
-            body: { query: searchQuery },
-          },
-        );
-        if (error) {
-          const status = (error as any)?.context?.status;
-          const message =
-            status === 429
-              ? "Search is temporarily rate-limited by the data provider. Please try again in a minute."
-              : (error as any)?.message || "Search failed. Please try again.";
+        const searchData = await searchAssets(searchQuery);
+        if (searchData.error) {
+          const message = searchData.error.includes("429")
+            ? "Search is temporarily rate-limited by the data provider. Please try again in a minute."
+            : searchData.error || "Search failed. Please try again.";
           toast.error("Search failed", { description: message });
           setSearchResults([]);
         } else {
-          const quotes = (data?.quotes || []) as SearchAssetResult[];
+          const quotes = (searchData.quotes || []) as SearchAssetResult[];
           setSearchResults(quotes);
 
           const equitySymbols = quotes
@@ -143,16 +133,13 @@ const Predictions = () => {
           if (equitySymbols.length) {
             const unique = Array.from(new Set(equitySymbols));
             const promises = unique.map((symbol) =>
-              supabase.functions
-                .invoke("get-stock-data", {
-                  body: { symbol },
-                })
+              fetchStockData(symbol)
                 .then(({ data, error }) => {
                   if (error) {
                     console.error(`Error for ${symbol}:`, error);
                     return null;
                   }
-                  const cp = data.currentPrice as any;
+                  const cp = data!.currentPrice as any;
                   const price =
                     (typeof cp.price === "number" && cp.price) ||
                     (typeof cp.previousClose === "number" &&

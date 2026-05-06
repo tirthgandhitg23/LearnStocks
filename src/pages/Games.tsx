@@ -57,6 +57,7 @@ import useLivePrices from "@/hooks/useLivePrices";
 import { useMarketChallengeStore } from "@/stores/marketChallengeStore";
 import type { PredictionDirection } from "@/stores/marketChallengeStore";
 import { supabase } from "@/integrations/supabase/client";
+import { searchAssets, fetchStockData } from "@/services/stockApi";
 import { useGamePointsStore } from "@/stores/gamePointsStore";
 import { isNSEMarketOpen } from "@/lib/marketHours";
 import {
@@ -288,24 +289,17 @@ const Games = () => {
     setSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "search-assets",
-          {
-            body: { query: searchQuery },
-          },
-        );
-        if (error) {
-          const status = (error as any)?.context?.status;
-          const message =
-            status === 429
-              ? "Search is temporarily rate-limited by the data provider. Please try again shortly."
-              : (error as any)?.message || "Search failed. Please try again.";
+        const searchData = await searchAssets(searchQuery);
+        if (searchData.error) {
+          const message = searchData.error.includes("429")
+            ? "Search is temporarily rate-limited by the data provider. Please try again shortly."
+            : searchData.error || "Search failed. Please try again.";
           toast.error("Search failed", { description: message });
           setSearchResults([]);
         } else {
-          setSearchResults((data?.quotes || []) as SearchAssetResult[]);
+          setSearchResults((searchData?.quotes || []) as SearchAssetResult[]);
 
-          const equitySymbols = (data?.quotes || [])
+          const equitySymbols = (searchData?.quotes || [])
             .filter((q: SearchAssetResult) => q.quoteType === "EQUITY")
             .map((q: SearchAssetResult) =>
               q.symbol.endsWith(".NS") ? q.symbol : `${q.symbol}.NS`,
@@ -347,12 +341,7 @@ const Games = () => {
   const getDayChangePercent = useCallback(
     async (symbol: string, dateISO: string) => {
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "get-stock-data",
-          {
-            body: { symbol: `${symbol}.NS`, days: 14 },
-          },
-        );
+        const { data, error } = await fetchStockData(`${symbol}.NS`, 14);
         if (error || !data?.historicalData) return null;
         const hist = (data.historicalData as any[])
           .map((h) => ({

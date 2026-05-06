@@ -17,15 +17,42 @@ const corsHeaders = {
 type HistoricalPoint = { date: string; close: number };
 
 async function fetchCurrentQuote(symbol: string) {
-  const resp = await fetch(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-      symbol,
-    )}?interval=1d&range=1d`,
-  );
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Accept": "application/json",
+  };
 
-  if (!resp.ok) {
+  let resp;
+  try {
+    resp = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        symbol,
+      )}?interval=1d&range=1d`,
+      { headers },
+    );
+    if (!resp.ok) {
+      console.warn(`Query1 failed for ${symbol}, trying Query2...`);
+      resp = await fetch(
+        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+          symbol,
+        )}?interval=1d&range=1d`,
+        { headers },
+      );
+    }
+  } catch (err) {
+    console.warn(`Fetch error for ${symbol}, trying Query2...`, err);
+    resp = await fetch(
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        symbol,
+      )}?interval=1d&range=1d`,
+      { headers },
+    );
+  }
+
+  if (!resp || !resp.ok) {
     throw new Error(
-      `Failed to fetch current quote for ${symbol} (status ${resp.status})`,
+      `Failed to fetch current quote for ${symbol} (status ${resp?.status || "unknown"})`,
     );
   }
 
@@ -94,20 +121,47 @@ async function fetchHistorical(
 ): Promise<HistoricalPoint[]> {
   if (!days || days <= 0) return [];
 
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Accept": "application/json",
+  };
+
   // Use the Yahoo chart API instead of CSV download (which now requires auth)
   const range = `${days}d`;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
-    symbol,
-  )}?interval=1d&range=${range}`;
+  let resp;
+  try {
+    resp = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        symbol,
+      )}?interval=1d&range=${range}`,
+      { headers },
+    );
+    if (!resp.ok) {
+      console.warn(`Historical Query1 failed for ${symbol}, trying Query2...`);
+      resp = await fetch(
+        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+          symbol,
+        )}?interval=1d&range=${range}`,
+        { headers },
+      );
+    }
+  } catch (err) {
+    console.warn(`Historical fetch error for ${symbol}, trying Query2...`, err);
+    resp = await fetch(
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        symbol,
+      )}?interval=1d&range=${range}`,
+      { headers },
+    );
+  }
 
-  const resp = await fetch(url);
-
-  if (!resp.ok) {
+  if (!resp || !resp.ok) {
     console.error(
       "get-stock-data historical fetch failed",
       symbol,
-      resp.status,
-      resp.statusText,
+      resp?.status,
+      resp?.statusText,
     );
     return [];
   }

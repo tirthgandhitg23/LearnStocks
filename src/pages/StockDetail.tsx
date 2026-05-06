@@ -17,7 +17,7 @@ import { TrendingUp, TrendingDown, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import NavigationBar from "@/components/NavigationBar";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchStockData } from "@/services/stockApi";
 
 // Define a type for a single data point in our chart
 type StockDataPoint = {
@@ -41,23 +41,18 @@ const StockDetail = () => {
   const [predicting, setPredicting] = useState(false);
 
   useEffect(() => {
-    const fetchStockData = async () => {
+    const fetchData = async () => {
       if (!symbol) return;
       setLoading(true);
       setPrediction(null); // Clear previous prediction when data changes
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "get-stock-data",
-          {
-            body: { symbol, days },
-          },
-        );
+        const { data, error } = await fetchStockData(symbol, days);
 
-        if (error) throw error;
+        if (error) throw new Error(error);
 
         // store current price (if present) and historical data for chart
         if (data?.currentPrice) setCurrentPrice(data.currentPrice);
-        const formattedData = (data.historicalData || []).map(
+        const formattedData = (data?.historicalData || []).map(
           (item: { date: string; close: number }) => ({
             ...item,
             date: new Date(item.date).toLocaleDateString("en-US", {
@@ -74,7 +69,7 @@ const StockDetail = () => {
       }
       setLoading(false);
     };
-    fetchStockData();
+    fetchData();
   }, [symbol, days]);
 
   // live price helper
@@ -158,7 +153,7 @@ const StockDetail = () => {
     setPredicting(true);
 
     try {
-      const pythonApiUrl = `${import.meta.env.VITE_API_BASE_URL}/predict`;
+      const pythonApiUrl = `/py-api/predict`;
 
       const requestBody = {
         symbol,

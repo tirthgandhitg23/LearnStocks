@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import NavigationBar from "@/components/NavigationBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchStockData } from "@/services/stockApi";
 import {
   LineChart as ReLineChart,
   Line,
@@ -42,18 +42,13 @@ const SearchStockDetail = () => {
   const [days, setDays] = useState(90);
 
   useEffect(() => {
-    const fetchStockData = async () => {
+    const loadStockData = async () => {
       if (!symbol) return;
       setLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke(
-          "get-stock-data",
-          {
-            body: { symbol, days },
-          },
-        );
+        const { data, error } = await fetchStockData(symbol, days);
 
-        if (error) throw error;
+        if (error) throw new Error(error);
 
         if (data?.currentPrice) {
           setCurrentPrice(data.currentPrice as CurrentPriceInfo);
@@ -79,7 +74,7 @@ const SearchStockDetail = () => {
       }
     };
 
-    fetchStockData();
+    loadStockData();
   }, [symbol, days]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {

@@ -42,23 +42,23 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 @app.on_event("startup")
 def startup():
     global tf, analyzer, SentimentIntensityAnalyzer
-    print("🔄 Starting backend...")
+    print("[*] Starting backend...")
 
     try:
         import tensorflow as _tf
         tf = _tf
-        print("✅ TensorFlow loaded")
+        print("[OK] TensorFlow loaded")
     except ImportError:
-        print("⚠️ TensorFlow not found. Prediction endpoints will be disabled.")
+        print("[!] TensorFlow not found. Prediction endpoints will be disabled.")
         tf = None
 
     try:
         from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as _SIA
         SentimentIntensityAnalyzer = _SIA
         analyzer = SentimentIntensityAnalyzer()
-        print("✅ Sentiment Analyzer loaded")
+        print("[OK] Sentiment Analyzer loaded")
     except ImportError:
-         print("⚠️ vaderSentiment not found. Sentiment endpoints will be disabled.")
+         print("[!] vaderSentiment not found. Sentiment endpoints will be disabled.")
 
 
 # ---------- Request Models ----------
@@ -512,3 +512,208 @@ Allowed values for 'difficulty': "Easy", "Medium", "Hard".
         log(traceback.format_exc())
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+# ==========================================
+# STOCK DATA via yfinance (replaces Supabase Edge Functions)
+# ==========================================
+
+import time as _time
+import threading as _threading
+import yfinance as yf
+
+# Simple in-memory cache with TTL
+_stock_cache: dict = {}
+_stock_cache_lock = _threading.Lock()
+
+def _cache_get(key: str, ttl_seconds: int = 60):
+    with _stock_cache_lock:
+        if key in _stock_cache:
+            val, ts = _stock_cache[key]
+            if _time.time() - ts < ttl_seconds:
+                return val
+    return None
+
+def _cache_set(key: str, value):
+    with _stock_cache_lock:
+        _stock_cache[key] = (value, _time.time())
+
+def _build_quote_response(symbol: str, days: int = 0) -> dict:
+    """Fetch quote + optional history for a symbol. Returns dict matching
+    the format the frontend expects (same shape as the old edge function)."""
+
+    ticker = yf.Ticker(symbol)
+
+    # --- Current Price ---
+    # fast_info is fastest; fall back to info if needed
+    try:
+        fi = ticker.fast_info
+        price = getattr(fi, "last_price", None)
+        prev_close = getattr(fi, "previous_close", None)
+    except Exception:
+        price = None
+        prev_close = None
+
+    # If fast_info didn't give us a price, try .info
+    info = {}
+    if not price or price <= 0:
+        try:
+            info = ticker.info or {}
+            price = info.get("regularMarketPrice") or info.get("currentPrice") or info.get("previousClose")
+            prev_close = prev_close or info.get("previousClose")
+        except Exception:
+            pass
+
+    if not info:
+        try:
+            info = ticker.info or {}
+        except Exception:
+            info = {}
+
+    if price is None or not isinstance(price, (int, float)) or price <= 0:
+        # Last resort: try to get from recent history
+        try:
+            hist = ticker.history(period="5d")
+            if not hist.empty:
+                price = float(hist["Close"].dropna().iloc[-1])
+                if prev_close is None and len(hist) >= 2:
+                    prev_close = float(hist["Close"].dropna().iloc[-2])
+        except Exception:
+            pass
+
+    if price is None:
+        price = 0.0
+    if prev_close is None:
+        prev_close = price
+
+    diff = price - prev_close if prev_close else 0.0
+    change_pct = (diff / prev_close * 100) if prev_close and prev_close != 0 else 0.0
+
+    current_price = {
+        "price": round(price, 2),
+        "previousClose": round(prev_close, 2) if prev_close else None,
+        "diff": round(diff, 2),
+        "regularMarketChangePercent": round(change_pct, 2),
+        "shortName": info.get("shortName") or info.get("symbol") or symbol,
+        "longName": info.get("longName") or info.get("shortName") or symbol,
+        "symbol": symbol,
+    }
+
+    # --- Historical Data ---
+    historical_data = []
+    if days and days > 0:
+        try:
+            hist = ticker.history(period=f"{days}d")
+            for date_idx, row in hist.iterrows():
+                close_val = row.get("Close")
+                if close_val is not None and not pd.isna(close_val):
+                    historical_data.append({
+                        "date": date_idx.strftime("%Y-%m-%d"),
+                        "close": round(float(close_val), 2),
+                    })
+        except Exception as e:
+            print(f"⚠️ Historical fetch failed for {symbol}: {e}")
+
+    return {
+        "symbol": symbol,
+        "currentPrice": current_price,
+        "historicalData": historical_data,
+    }
+
+
+@app.get("/stock/quote/{symbol}")
+def stock_quote(symbol: str, days: int = 0):
+    """Get current price and optional historical data for a single symbol.
+    Response format matches the old Supabase get-stock-data edge function."""
+    cache_key = f"quote:{symbol}:{days}"
+    cached = _cache_get(cache_key, ttl_seconds=30)
+    if cached:
+        return cached
+
+    try:
+        result = _build_quote_response(symbol, days)
+        _cache_set(cache_key, result)
+        return result
+    except Exception as e:
+        return JSONResponse(
+            content={"error": str(e), "symbol": symbol},
+            status_code=500,
+        )
+
+
+@app.post("/stock/quote/{symbol}")
+def stock_quote_post(symbol: str, body: dict = {}):
+    """POST variant so frontend can send { symbol, days } in body."""
+    days = body.get("days", 0) or 0
+    return stock_quote(symbol, days)
+
+
+@app.post("/stock/batch")
+def stock_batch(body: dict):
+    """Batch fetch quotes for multiple symbols.
+    Body: { "symbols": ["RELIANCE.NS", "TCS.NS", ...] }
+    Returns: { "RELIANCE.NS": { currentPrice: {...}, ... }, ... }
+    """
+    symbols = body.get("symbols", [])
+    if not symbols:
+        return {}
+
+    results = {}
+    for sym in symbols[:30]:  # Cap at 30 to avoid abuse
+        cache_key = f"quote:{sym}:0"
+        cached = _cache_get(cache_key, ttl_seconds=30)
+        if cached:
+            results[sym] = cached
+            continue
+        try:
+            data = _build_quote_response(sym, days=0)
+            _cache_set(cache_key, data)
+            results[sym] = data
+        except Exception as e:
+            print(f"⚠️ Batch fetch failed for {sym}: {e}")
+
+    return results
+
+
+@app.get("/stock/search")
+def stock_search(q: str = ""):
+    """Search for stocks/assets. Returns format matching old search-assets edge function."""
+    if not q or not q.strip():
+        return {"quotes": []}
+
+    cache_key = f"search:{q.strip().lower()}"
+    cached = _cache_get(cache_key, ttl_seconds=120)
+    if cached:
+        return cached
+
+    try:
+        # yfinance doesn't have a built-in search, use Yahoo search API
+        # with proper headers (yfinance's session handles cookies)
+        search_url = f"https://query2.finance.yahoo.com/v1/finance/search?q={q.strip()}&quotesCount=20&newsCount=0"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        }
+        resp = requests.get(search_url, headers=headers, timeout=10)
+
+        if resp.status_code == 429:
+            return JSONResponse(
+                content={"quotes": [], "error": "Rate limited. Try again in a moment."},
+                status_code=429,
+            )
+
+        if not resp.ok:
+            # Fallback: try query1
+            resp = requests.get(
+                search_url.replace("query2", "query1"),
+                headers=headers, timeout=10,
+            )
+
+        data = resp.json() if resp.ok else {"quotes": []}
+        result = {"quotes": data.get("quotes", [])}
+        _cache_set(cache_key, result)
+        return result
+
+    except Exception as e:
+        print(f"⚠️ Search failed: {e}")
+        return JSONResponse(
+            content={"quotes": [], "error": str(e)},
+            status_code=500,
+        )

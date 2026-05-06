@@ -13,6 +13,7 @@ import { PieChart } from "lucide-react";
 import { useRef } from "react";
 import LiveBadge from "@/components/LiveBadge";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchStockData } from "@/services/stockApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useBalanceStore } from "@/stores/balanceStore";
@@ -218,11 +219,8 @@ const Home = () => {
             const symbolForApi = toNseSymbol(base);
             let hist: { date: string; close: number }[] = [];
 
-            // Try fetching from API
-            const { data, error } = await supabase.functions.invoke(
-              "get-stock-data",
-              { body: { symbol: symbolForApi, days } },
-            );
+            // Try fetching from Python API
+            const { data, error } = await fetchStockData(symbolForApi, days);
 
             if (
               !error &&

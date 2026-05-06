@@ -263,26 +263,41 @@ const PSG = () => {
     try {
       // 1. Get Live Prices
       const symbols = portfolioHoldings.map((h) =>
-        h.symbol.includes(".NS") ? h.symbol : `${h.symbol}.NS`
+        h.symbol.includes(".") ? h.symbol : `${h.symbol}.NS`
       );
       const priceMap = await fetchPrices(symbols);
 
       // 2. Construct CSV content
       // Header: symbol,quantity,avg_price,current_price
       let csvContent = "symbol,quantity,avg_price,current_price\n";
+      let failedFetches: string[] = [];
 
       portfolioHoldings.forEach((h) => {
         // Strip .NS for display/csv consistency if needed, but Python handles it.
-        // We'll strip .NS for symbol to look cleaner.
-        const cleanSymbol = h.symbol.replace(".NS", "");
+        const cleanSymbol = h.symbol.replace(".NS", "").replace(".BO", "");
         const priceObj =
           priceMap[cleanSymbol] ||
           priceMap[`${cleanSymbol}.NS`] ||
+          priceMap[`${cleanSymbol}.BO`] ||
           priceMap[h.symbol];
-        const currentPrice = priceObj ? priceObj.price : h.avgBuyPrice; // Fallback to buy price if fetch fails
+          
+        let currentPrice: number;
+        if (priceObj) {
+          currentPrice = priceObj.price;
+        } else {
+          currentPrice = h.avgBuyPrice;
+          failedFetches.push(h.symbol);
+        }
 
         csvContent += `${cleanSymbol},${h.quantity},${h.avgBuyPrice},${currentPrice}\n`;
       });
+
+      if (failedFetches.length > 0) {
+        toast.warning(
+          `Could not fetch live prices for: ${failedFetches.join(", ")}. Using purchase price for these.`,
+          { duration: 6000 }
+        );
+      }
 
       // 3. Create File object
       const blob = new Blob([csvContent], { type: "text/csv" });
