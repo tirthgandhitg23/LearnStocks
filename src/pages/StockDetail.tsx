@@ -46,71 +46,162 @@ import { motion, AnimatePresence } from "framer-motion";
 const renderMarkdownToJSX = (mdText: string) => {
   if (!mdText) return null;
   const lines = mdText.split("\n");
-  return lines.map((line, idx) => {
+  const elements: React.ReactNode[] = [];
+  
+  let inTable = false;
+  let tableRows: string[][] = [];
+  
+  const flushTable = (key: number) => {
+    if (tableRows.length === 0) return null;
+    
+    // Filter out separator lines (like | :--- | :--- |)
+    const filteredRows = tableRows.filter(row => {
+      return !row.every(cell => /^:?-+:?$/.test(cell.trim()));
+    });
+    
+    if (filteredRows.length === 0) {
+      tableRows = [];
+      inTable = false;
+      return null;
+    }
+    
+    const hasHeader = tableRows.length > 1 && tableRows[1].every(cell => /^:?-+:?$/.test(cell.trim()));
+    const headers = hasHeader ? filteredRows[0] : [];
+    const bodyRows = hasHeader ? filteredRows.slice(1) : filteredRows;
+    
+    const element = (
+      <div key={`table-${key}`} className="my-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-xs">
+          {headers.length > 0 && (
+            <thead className="bg-slate-50 dark:bg-slate-900/60">
+              <tr>
+                {headers.map((header, hIdx) => (
+                  <th key={hIdx} className="px-4 py-2.5 text-left font-bold text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800">
+                    {header.trim().replace(/\*\*/g, "")}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-950">
+            {bodyRows.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
+                {row.map((cell, cIdx) => {
+                  const trimmedCell = cell.trim();
+                  const parts = trimmedCell.split("**");
+                  return (
+                    <td key={cIdx} className="px-4 py-2 text-slate-700 dark:text-slate-300 font-medium">
+                      {parts.map((part, pIdx) => (
+                        pIdx % 2 === 1 ? <strong key={pIdx} className="text-slate-900 dark:text-slate-100 font-bold">{part}</strong> : part
+                      ))}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableRows = [];
+    inTable = false;
+    return element;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
-    if (!trimmed) return <div key={idx} className="h-2" />;
+    
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      inTable = true;
+      const cells = trimmed.split("|").slice(1, -1);
+      tableRows.push(cells);
+      continue;
+    }
+    
+    if (inTable) {
+      const tableElement = flushTable(i);
+      if (tableElement) elements.push(tableElement);
+    }
+    
+    if (!trimmed) {
+      elements.push(<div key={i} className="h-2" />);
+      continue;
+    }
 
     // Headers
     if (trimmed.startsWith("# ")) {
-      return (
-        <h1 key={idx} className="text-2xl font-extrabold mt-6 mb-3 text-slate-900 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-2">
+      elements.push(
+        <h1 key={i} className="text-2xl font-extrabold mt-6 mb-3 text-slate-900 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-2">
           {trimmed.replace("# ", "")}
         </h1>
       );
+      continue;
     }
     if (trimmed.startsWith("## ")) {
-      return (
-        <h2 key={idx} className="text-xl font-bold mt-5 mb-2 text-slate-800 dark:text-slate-200">
+      elements.push(
+        <h2 key={i} className="text-xl font-bold mt-5 mb-2 text-slate-800 dark:text-slate-200">
           {trimmed.replace("## ", "")}
         </h2>
       );
+      continue;
     }
     if (trimmed.startsWith("### ")) {
-      return (
-        <h3 key={idx} className="text-lg font-bold mt-4 mb-2 text-slate-700 dark:text-slate-300">
+      elements.push(
+        <h3 key={i} className="text-lg font-bold mt-4 mb-2 text-slate-700 dark:text-slate-300">
           {trimmed.replace("### ", "")}
         </h3>
       );
+      continue;
     }
 
     // Dividers
     if (trimmed === "---") {
-      return <hr key={idx} className="my-4 border-slate-200 dark:border-slate-800" />;
+      elements.push(<hr key={i} className="my-4 border-slate-200 dark:border-slate-800" />);
+      continue;
     }
 
     // Bullet points
     if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
       const content = trimmed.substring(2);
-      // Highlight bold in lists
       const parts = content.split("**");
-      return (
-        <li key={idx} className="ml-5 list-disc text-sm text-slate-600 dark:text-slate-400 my-1 leading-relaxed">
+      elements.push(
+        <li key={i} className="ml-5 list-disc text-sm text-slate-600 dark:text-slate-400 my-1 leading-relaxed">
           {parts.map((part, pIdx) => (
             pIdx % 2 === 1 ? <strong key={pIdx} className="text-slate-900 dark:text-slate-100 font-semibold">{part}</strong> : part
           ))}
         </li>
       );
+      continue;
     }
 
     // Bold text highlights
     if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
-      return (
-        <p key={idx} className="text-sm font-bold text-slate-900 dark:text-slate-100 my-2">
+      elements.push(
+        <p key={i} className="text-sm font-bold text-slate-900 dark:text-slate-100 my-2">
           {trimmed.replace(/\*\*/g, "")}
         </p>
       );
+      continue;
     }
 
     // Simple paragraph text with potential inline bold items
     const textParts = trimmed.split("**");
-    return (
-      <p key={idx} className="text-sm text-slate-600 dark:text-slate-400 my-2 leading-relaxed">
+    elements.push(
+      <p key={i} className="text-sm text-slate-600 dark:text-slate-400 my-2 leading-relaxed font-normal">
         {textParts.map((part, pIdx) => (
           pIdx % 2 === 1 ? <strong key={pIdx} className="text-slate-900 dark:text-slate-200 font-semibold">{part}</strong> : part
         ))}
       </p>
     );
-  });
+  }
+  
+  if (inTable) {
+    const tableElement = flushTable(lines.length);
+    if (tableElement) elements.push(tableElement);
+  }
+  
+  return elements;
 };
 
 type StockDataPoint = {
