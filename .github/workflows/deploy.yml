@@ -1,0 +1,61 @@
+name: Deploy to GCP Cloud Run
+
+on:
+  push:
+    branches:
+      - vidhi-docker-setup  # Triggers deployment when you push to this branch
+
+permissions:
+  contents: 'read'
+  id-token: 'write' # Required for Workload Identity Federation
+
+env:
+  PROJECT_ID: project-14e96741-bc0f-415e-a71
+  REGION: us-central1
+
+jobs:
+  deploy-services:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/144972782524/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-deployer@project-14e96741-bc0f-415e-a71.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # 1. Deploy Python API
+      - name: Deploy Python API Backend
+        run: |
+          gcloud run deploy learnstocks-api \
+            --source ./python-api \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --set-env-vars="GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}"
+
+      # 2. Deploy Next.js Chatbot
+      - name: Deploy Chatbot Backend
+        run: |
+          gcloud run deploy learnstocks-chatbot \
+            --source ./investment-advisor-chatbot \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --set-env-vars="GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}"
+
+      # 3. Deploy Frontend Client
+      - name: Deploy Frontend Client
+        run: |
+          gcloud run deploy learnstocks-frontend \
+            --source . \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --set-build-env-vars="VITE_SUPABASE_URL=https://faflzgtrtjfxanusaltc.supabase.co,VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}"
