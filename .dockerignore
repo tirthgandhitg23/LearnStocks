@@ -1,0 +1,6 @@
+node_modules
+dist
+.git
+.env*.local
+python-api
+investment-advisor-chatbot
