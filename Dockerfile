@@ -1,5 +1,5 @@
 # Stage 1: Build React SPA
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Define build arguments for env variables
