@@ -28,7 +28,7 @@ jobs:
       - name: Run tests
         run: |
           cd python-api
-          pytest tests/ -v
+          PYTHONPATH=. pytest tests/ -v
 
   build-docker:
     needs: test-python
