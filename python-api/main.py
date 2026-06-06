@@ -478,7 +478,7 @@ Allowed values for 'difficulty': "Easy", "Medium", "Hard".
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": "Generate now."}
             ],
-            model="llama-3.1-8b-instant", 
+            model="llama-3.3-70b-versatile", 
             temperature=0.7,
         )
         

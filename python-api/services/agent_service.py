@@ -435,49 +435,89 @@ def generate_report_fallback(symbol: str, name: str, ind: dict, sent: dict, r: d
     """Build a beautiful, structured Markdown Investment Report"""
     market_cap_formatted = f"₹{r['market_cap']:,}" if r['market_cap'] > 0 else "N/A"
     
-    report = f"""# Executive Investment Prospectus: {symbol} ({name})
+    rsi_val = ind['rsi']
+    rsi_interpret = (
+        "Oversold (Bullish Reversal Potential)" if rsi_val < 30 
+        else "Overbought (Bearish Pullback Potential)" if rsi_val > 70 
+        else "Neutral-Strong" if rsi_val > 50 
+        else "Neutral-Weak"
+    )
+    
+    sent_score = sent['score']
+    sent_interpret = (
+        "Highly Optimistic (Strong Bullish Sentiment)" if sent_score > 65 
+        else "Slightly Bearish (Caution Recommended)" if sent_score < 35 
+        else "Moderately Positive (Healthy Interest)"
+    )
+    
+    beta_val = r['beta']
+    beta_interpret = (
+        "High Beta (Highly Volatile / Fast Mover)" if beta_val > 1.3
+        else "Market Aligned (Moderate Volatility)" if beta_val >= 0.8
+        else "Low Beta (Defensive / Stable Asset)"
+    )
+    
+    report = f"""# 📊 Institutional Investment Prospectus: {symbol} ({name})
 
 ## 1. Executive Summary
-Following a comprehensive multi-agent collaborative analysis of **{name} ({symbol})**, the consensus recommends a **{rec['signal']}** position with a confidence rating of **{rec['confidence']}%**. The technical setups reveal a `{rec['short_term']}` outlook in the short term, backed by a `{rec['long_term']}` trajectory.
+Following a comprehensive multi-agent collaborative analysis of **{name} ({symbol})**, the consensus recommends a **{rec['signal']}** position with a confidence rating of **{rec['confidence']}%**.
+
+| Metric | Outlook / Rating |
+| :--- | :--- |
+| **Short-Term Outlook** | `{rec['short_term']}` |
+| **Long-Term Trajectory** | `{rec['long_term']}` |
+| **Consensus Recommendation** | **{rec['signal']}** ({rec['confidence']}% Confidence) |
 
 ---
 
 ## 2. Technical Profile
 Our *Technical Analyst Agent* has computed core market gauges from the historical 60-day price trends:
-*   **Last Closing Price:** ₹{ind['last_close']:.2f} (Previous Close: ₹{ind['prev_close']:.2f})
-*   **Relative Strength Index (RSI):** {ind['rsi']:.2f} ({'Oversold' if ind['rsi'] < 30 else 'Overbought' if ind['rsi'] > 70 else 'Neutral-Strong' if ind['rsi'] > 50 else 'Neutral-Weak'})
-*   **MACD Profile:** Line: {ind['macd']:.4f} | Signal: {ind['macd_signal']:.4f} | Histogram: {ind['macd_hist']:.4f}
-*   **Bollinger Bands Range:** Upper: ₹{ind['bb_upper']:.2f} | Lower: ₹{ind['bb_lower']:.2f}
-*   **Moving Averages:** 20-Day SMA: ₹{ind['sma20']:.2f} | 50-Day SMA: ₹{ind['sma50']:.2f}
-*   **Momentum Index (10-Day):** {ind['momentum']:.2f}%
-*   **Last Volume:** {ind['volume_last']:,} (20-Day Avg: {ind['volume_avg']:,})
+
+| Technical Gauge | Value | Interpretation / Context |
+| :--- | :--- | :--- |
+| **Last Closing Price** | ₹{ind['last_close']:.2f} | Previous Close: ₹{ind['prev_close']:.2f} |
+| **Relative Strength Index (RSI)** | {ind['rsi']:.2f} | {rsi_interpret} |
+| **Bollinger Bands Range** | ₹{ind['bb_lower']:.2f} – ₹{ind['bb_upper']:.2f} | Support/Resistance boundaries |
+| **Moving Averages (SMA)** | 20-Day: ₹{ind['sma20']:.2f} / 50-Day: ₹{ind['sma50']:.2f} | Price is currently trend-aligned |
+| **MACD Profile** | Line: {ind['macd']:.4f} Signal: {ind['macd_signal']:.4f} | Histogram: {ind['macd_hist']:.4f} |
+| **Momentum Index (10-Day)** | {ind['momentum']:.2f}% | Rate of price velocity |
+| **Last Session Volume** | {ind['volume_last']:,} | 20-Day Avg: {ind['volume_avg']:,} |
 
 ---
 
 ## 3. News & Public Sentiment Analysis
 Our *Sentiment Analyst Agent* reviewed the latest market headlines and publisher content:
-*   **Sentiment Score:** {sent['score']}/100 ({'Highly Optimistic' if sent['score'] > 65 else 'Slightly Bearish' if sent['score'] < 35 else 'Moderately Positive'})
-*   **Article Breakdown:** Positive: {sent['positive']} | Negative: {sent['negative']} | Neutral: {sent['neutral']}
-*   **Summary:** Public interest in {symbol} remains stable with general retail focus on near-term corporate guidance and broader sector conditions.
+
+*   **Composite Sentiment Score:** `{sent['score']}/100` ({sent_interpret})
+*   **Article Sentiment Breakdown:**
+    *   🟢 **Positive:** {sent['positive']} articles
+    *   🔴 **Negative:** {sent['negative']} articles
+    *   ⚪ **Neutral:** {sent['neutral']} articles
+*   **Summary:** Public interest in **{symbol}** remains stable with general retail focus on near-term corporate guidance and broader sector conditions.
 
 ---
 
 ## 4. Risk Profile & Volatility Matrix
 Our *Risk Management Agent* assessed portfolio exposures and asset safety levels:
-*   **Beta Coefficient:** {r['beta']:.2f} ({'More volatile than market' if r['beta'] > 1.0 else 'Less volatile than market'})
-*   **Asset Volatility:** {r['volatility']}% (Daily average standard deviation)
-*   **Risk Classification:** **{r['risk_class']} Risk**
-*   **Value at Risk (95% confidence VaR):** {r['var_95_pct']}% potential maximum daily loss.
-*   **Estimated Peak Drawdown (Empirical):** {r['max_drawdown_est_pct']}%
-*   **Enterprise Market Weight:** {market_cap_formatted}
+
+| Risk Parameter | Value | Details / Interpretation |
+| :--- | :--- | :--- |
+| **Risk Classification** | **{r['risk_class']} Risk** | Overall risk category |
+| **Beta Coefficient** | {r['beta']:.2f} | {beta_interpret} |
+| **Asset Volatility** | {r['volatility']}% | Daily average standard deviation |
+| **Value at Risk (95% VaR)** | {r['var_95_pct']}% | Potential maximum daily loss |
+| **Estimated Peak Drawdown** | {r['max_drawdown_est_pct']}% | Empirical worst-case decline |
+| **Market Capitalization** | {market_cap_formatted} | Enterprise Size |
 
 ---
 
-## 5. Agent consensus & Reasoning
+## 5. Agent Consensus & Reasoning
 The **{rec['signal']}** recommendation is based on a structured correlation matrix:
 1.  **Technical Support:** RSI stands at {ind['rsi']:.1f}, reflecting a stable structural baseline with MACD demonstrating a `{"bullish crossover" if ind['macd_hist'] > 0 else "temporary cooling trend"}`.
 2.  **Sentiment Support:** A composite score of {sent['score']}/100 provides support for constructive retail accumulation.
-3.  **Risk Outlook:** Under {r['risk_class'].lower()}-risk guidelines, maximum drawdowns are well-within standard historical parameters. 
+3.  **Risk Outlook:** Under {r['risk_class'].lower()}-risk guidelines, maximum drawdowns are well-within standard parameters. 
+
+***
 
 **Analyst Disclaimer:** *This document is automatically synthesized by a cooperative AI multi-agent research framework. It does not constitute formal, individualized investment advice. Conduct personal due diligence before risking capital.*
 """
@@ -514,7 +554,7 @@ Format your output beautifully using high-end Markdown typography:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": "Synthesize the custom investment report now."}
             ],
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             temperature=0.4,
             max_tokens=1500
         )
