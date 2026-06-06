@@ -1,5 +1,10 @@
 import { useState, useCallback, useRef } from "react";
 
+const getPythonApiBaseUrl = (): string => {
+  const env = (import.meta as any).env;
+  return (env?.VITE_PY_API_BASE_URL || env?.VITE_API_BASE_URL || "/py-api").replace(/\/$/, "");
+};
+
 /**
  * Upload a CSV file to the FastAPI analyze endpoint and return parsed JSON.
  * Throws an Error when the request fails.
@@ -7,7 +12,7 @@ import { useState, useCallback, useRef } from "react";
 export async function analyzePortfolio<T = any>(
   file: File,
   signal?: AbortSignal,
-  url: string = "http://localhost:8000/analyze"
+  url: string = `${getPythonApiBaseUrl()}/analyze`
 ): Promise<T> {
   if (!file) throw new Error("File is required");
 
